@@ -32,6 +32,5 @@ venv/
 .ruff_cache/
 
 # Claude local-only state
+.claude/
 CLAUDE.local.md
-.claude/settings.local.json
-.claude/scheduled_tasks.json

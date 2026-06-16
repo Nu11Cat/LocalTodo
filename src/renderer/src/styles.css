@@ -167,6 +167,67 @@ h2 {
   flex-wrap: wrap;
 }
 
+.project-card-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.project-card {
+  display: grid;
+  gap: 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+  padding: 14px;
+  background: #fff;
+}
+
+.project-card.is-active {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.14);
+}
+
+.project-card-main {
+  display: grid;
+  gap: 8px;
+  border: 0;
+  padding: 0;
+  color: inherit;
+  text-align: left;
+  background: transparent;
+}
+
+.project-card-title {
+  font-weight: 800;
+}
+
+.project-card-subtitle {
+  color: #64748b;
+  font-size: 0.84rem;
+  overflow-wrap: anywhere;
+}
+
+.project-card-counts,
+.project-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.project-card-counts span {
+  border-radius: 999px;
+  padding: 4px 8px;
+  color: #334155;
+  background: #e2e8f0;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.project-card-actions .ghost-button {
+  padding: 8px 10px;
+  font-size: 0.84rem;
+}
+
 .filter-row span {
   color: #49607d;
   font-size: 0.82rem;
@@ -239,6 +300,11 @@ h2 {
 .ghost-button {
   color: #334155;
   background: #e2e8f0;
+}
+
+.ghost-button.is-active {
+  color: #fff;
+  background: #2563eb;
 }
 
 .task-detail-empty {

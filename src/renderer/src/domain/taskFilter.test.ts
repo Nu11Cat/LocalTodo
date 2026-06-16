@@ -64,6 +64,15 @@ describe('taskFilter', () => {
     expect(matchesTaskFilter(baseTask, filter({ tags: ['ai', 'backend'] }))).toBe(false)
   })
 
+  it('filters by project key', () => {
+    expect(matchesTaskFilter(baseTask, filter({ projects: ['LocalTodo\nG:/Zhao/nu11cat/LocalTodo'] }))).toBe(
+      true
+    )
+    expect(matchesTaskFilter(baseTask, filter({ projects: ['Other\nG:/other'] }))).toBe(false)
+    expect(matchesTaskFilter({ ...baseTask, projectName: undefined, repoPath: undefined }, filter({ projects: ['\n'] }))).toBe(true)
+    expect(isTaskFilterStateEmpty(filter({ projects: ['LocalTodo\nG:/Zhao/nu11cat/LocalTodo'] }))).toBe(false)
+  })
+
   it('combines filter facets with AND semantics', () => {
     const tasks: Task[] = [
       baseTask,

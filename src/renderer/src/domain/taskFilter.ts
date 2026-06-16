@@ -1,3 +1,4 @@
+import { getProjectKey } from './projectSummary'
 import type { Task, TaskPriority, TaskStatus, TaskType } from './taskModel'
 
 export interface TaskFilterState {
@@ -6,6 +7,7 @@ export interface TaskFilterState {
   priorities: TaskPriority[]
   types: TaskType[]
   tags: string[]
+  projects: string[]
 }
 
 export function createEmptyTaskFilterState(): TaskFilterState {
@@ -14,7 +16,8 @@ export function createEmptyTaskFilterState(): TaskFilterState {
     statuses: [],
     priorities: [],
     types: [],
-    tags: []
+    tags: [],
+    projects: []
   }
 }
 
@@ -24,7 +27,8 @@ export function isTaskFilterStateEmpty(state: TaskFilterState): boolean {
     state.statuses.length === 0 &&
     state.priorities.length === 0 &&
     state.types.length === 0 &&
-    state.tags.length === 0
+    state.tags.length === 0 &&
+    state.projects.length === 0
   )
 }
 
@@ -70,7 +74,8 @@ export function matchesTaskFilter(task: Task, state: TaskFilterState): boolean {
     (state.statuses.length === 0 || state.statuses.includes(task.status)) &&
     (state.priorities.length === 0 || state.priorities.includes(task.priority)) &&
     (state.types.length === 0 || state.types.includes(task.type)) &&
-    matchesSelectedTags(task, state.tags)
+    matchesSelectedTags(task, state.tags) &&
+    (state.projects.length === 0 || state.projects.includes(getProjectKey(task)))
   )
 }
 

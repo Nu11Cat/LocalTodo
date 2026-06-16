@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import ProjectDashboard from './components/ProjectDashboard.vue'
 import TaskDetailPanel from './components/TaskDetailPanel.vue'
 import { useTodos } from './composables/useTodos'
 import { taskPriorities, taskStatuses, taskTypes } from './domain/taskModel'
@@ -17,6 +18,10 @@ const {
   totalActiveCount,
   totalCompletedCount,
   hasActiveFilters,
+  projectSummaries,
+  hasProjectDashboard,
+  selectedProjectKey,
+  selectedProjectLabel,
   availableTags,
   selectedTodo,
   addTodo,
@@ -28,13 +33,16 @@ const {
   togglePriorityFilter,
   toggleTypeFilter,
   toggleTagFilter,
+  setProjectFilter,
   resetFilters,
   removeTodo,
   clearCompleted,
   copyTaskAiContext,
   copyActiveAiContext,
   copyProjectAiContext,
+  copyProjectGroupAiContext,
   exportProjectAiContext,
+  exportProjectGroupAiContext,
   openExportedAiContext,
   revealExportedAiContext,
   downloadTodosJson,
@@ -68,11 +76,13 @@ function copySelectedTodoContext(): void {
   }
 }
 
-async function exportProjectContext(): Promise<void> {
+async function handleProjectContextExport(
+  exporter: () => ReturnType<typeof exportProjectAiContext>
+): Promise<void> {
   projectContextExportMessage.value = 'Exporting project context...'
   lastExportedFilePath.value = null
 
-  const result = await exportProjectAiContext()
+  const result = await exporter()
 
   if (result.status === 'written') {
     lastExportedFilePath.value = result.filePath
@@ -86,6 +96,14 @@ async function exportProjectContext(): Promise<void> {
   }
 
   projectContextExportMessage.value = `Export failed: ${result.message}`
+}
+
+async function exportProjectContext(): Promise<void> {
+  await handleProjectContextExport(exportProjectAiContext)
+}
+
+async function exportProjectGroupContext(key: string): Promise<void> {
+  await handleProjectContextExport(() => exportProjectGroupAiContext(key))
 }
 
 async function openLastExport(): Promise<void> {
@@ -167,6 +185,15 @@ async function revealLastExport(): Promise<void> {
         </span>
       </div>
     </section>
+
+    <ProjectDashboard
+      v-if="hasProjectDashboard"
+      :summaries="projectSummaries"
+      :selected-key="selectedProjectKey"
+      @select="setProjectFilter"
+      @copy="copyProjectGroupAiContext"
+      @export="exportProjectGroupContext"
+    />
 
     <section class="filter-bar" aria-labelledby="filter-title">
       <div class="filter-header">
@@ -251,6 +278,7 @@ async function revealLastExport(): Promise<void> {
       <div class="panel-heading">
         <h2 id="active-title">Active</h2>
         <div class="panel-actions">
+          <span v-if="selectedProjectKey">Project: {{ selectedProjectLabel }}</span>
           <span v-if="hasActiveFilters">{{ activeTodos.length }} of {{ totalActiveCount }} shown</span>
           <span v-else>{{ activeTodos.length }} open</span>
           <button

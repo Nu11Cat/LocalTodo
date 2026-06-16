@@ -1,0 +1,86 @@
+<script setup lang="ts">
+import type { ProjectSummary } from '../domain/projectSummary'
+
+const props = defineProps<{
+  summaries: ProjectSummary[]
+  selectedKey: string | null
+}>()
+
+const emit = defineEmits<{
+  select: [key: string | null]
+  copy: [key: string]
+  export: [key: string]
+}>()
+
+function hasSingleRepoPath(summary: ProjectSummary): boolean {
+  const repoPaths = summary.tasks
+    .map((task) => task.repoPath)
+    .filter((repoPath): repoPath is string => typeof repoPath === 'string' && repoPath.trim().length > 0)
+
+  return new Set(repoPaths).size === 1
+}
+
+function selectProject(key: string): void {
+  emit('select', props.selectedKey === key ? null : key)
+}
+</script>
+
+<template>
+  <section class="todo-panel project-dashboard" aria-labelledby="project-dashboard-title">
+    <div class="panel-heading">
+      <div>
+        <p class="eyebrow">Project dashboard</p>
+        <h2 id="project-dashboard-title">Projects</h2>
+      </div>
+      <button
+        type="button"
+        class="ghost-button"
+        :class="{ 'is-active': selectedKey === null }"
+        :aria-pressed="selectedKey === null"
+        @click="emit('select', null)"
+      >
+        All projects
+      </button>
+    </div>
+
+    <div class="project-card-list">
+      <article
+        v-for="summary in summaries"
+        :key="summary.key"
+        class="project-card"
+        :class="{ 'is-active': selectedKey === summary.key }"
+      >
+        <button
+          type="button"
+          class="project-card-main"
+          :aria-pressed="selectedKey === summary.key"
+          @click="selectProject(summary.key)"
+        >
+          <span class="project-card-title">{{ summary.label }}</span>
+          <span v-if="summary.repoPath" class="project-card-subtitle">{{ summary.repoPath }}</span>
+          <span class="project-card-counts">
+            <span>{{ summary.active }} active</span>
+            <span>{{ summary.done }} done</span>
+            <span v-if="summary.doing > 0">{{ summary.doing }} doing</span>
+            <span v-if="summary.blocked > 0">{{ summary.blocked }} blocked</span>
+            <span v-if="summary.review > 0">{{ summary.review }} review</span>
+          </span>
+        </button>
+
+        <div class="project-card-actions">
+          <button type="button" class="ghost-button" @click="emit('copy', summary.key)">
+            Copy context
+          </button>
+          <button
+            v-if="hasSingleRepoPath(summary)"
+            type="button"
+            class="ghost-button"
+            @click="emit('export', summary.key)"
+          >
+            Export context
+          </button>
+        </div>
+      </article>
+    </div>
+  </section>
+</template>

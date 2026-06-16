@@ -23,6 +23,7 @@ import {
   type TaskStatus,
   type TaskType
 } from '@renderer/domain/taskModel'
+import { findProjectSummary, summarizeProjects } from '@renderer/domain/projectSummary'
 import { migrateStoredTasks } from '@renderer/domain/taskMigration'
 
 const storageKey = 'localtodo.todos'
@@ -93,6 +94,11 @@ export function useTodos() {
   const totalActiveCount = computed(() => todos.value.filter(isTaskActive).length)
   const totalCompletedCount = computed(() => todos.value.filter(isTaskDone).length)
   const hasActiveFilters = computed(() => !isTaskFilterStateEmpty(filterState.value))
+  const projectSummaries = computed(() => summarizeProjects(todos.value))
+  const hasProjectDashboard = computed(() => todos.value.length > 0)
+  const selectedProjectKey = computed(() => filterState.value.projects[0] ?? null)
+  const selectedProject = computed(() => findProjectSummary(projectSummaries.value, selectedProjectKey.value))
+  const selectedProjectLabel = computed(() => selectedProject.value?.label ?? '')
   const availableTags = computed(() => {
     const tagsByKey = new Map<string, string>()
 
@@ -222,6 +228,13 @@ export function useTodos() {
     toggleFilterValue('tags', tag)
   }
 
+  function setProjectFilter(key: string | null): void {
+    filterState.value = {
+      ...filterState.value,
+      projects: key === null ? [] : [key]
+    }
+  }
+
   function resetFilters(): void {
     filterState.value = createEmptyTaskFilterState()
   }
@@ -247,6 +260,17 @@ export function useTodos() {
     return true
   }
 
+  async function copyProjectGroupAiContext(key: string): Promise<boolean> {
+    const summary = findProjectSummary(projectSummaries.value, key)
+
+    if (!summary) {
+      return false
+    }
+
+    await navigator.clipboard.writeText(generateProjectAiContext(summary.tasks))
+    return true
+  }
+
   async function exportProjectAiContext(): Promise<ExportProjectAiContextResult> {
     if (!window.api?.exportProjectAiContext) {
       return { status: 'error', message: 'Project AI context export is not available.' }
@@ -256,6 +280,24 @@ export function useTodos() {
       markdown: generateProjectAiContext(todos.value),
       suggestedFileName: projectContextFileName,
       suggestedPath: createProjectContextExportPath(todos.value)
+    })
+  }
+
+  async function exportProjectGroupAiContext(key: string): Promise<ExportProjectAiContextResult> {
+    if (!window.api?.exportProjectAiContext) {
+      return { status: 'error', message: 'Project AI context export is not available.' }
+    }
+
+    const summary = findProjectSummary(projectSummaries.value, key)
+
+    if (!summary) {
+      return { status: 'error', message: 'Project was not found.' }
+    }
+
+    return window.api.exportProjectAiContext({
+      markdown: generateProjectAiContext(summary.tasks),
+      suggestedFileName: projectContextFileName,
+      suggestedPath: createProjectContextExportPath(summary.tasks)
     })
   }
 
@@ -302,6 +344,18 @@ export function useTodos() {
   }
 
   watch(
+    projectSummaries,
+    (summaries) => {
+      const key = selectedProjectKey.value
+
+      if (key !== null && !findProjectSummary(summaries, key)) {
+        setProjectFilter(null)
+      }
+    },
+    { flush: 'sync' }
+  )
+
+  watch(
     todos,
     (nextTodos) => {
       localStorage.setItem(storageKey, JSON.stringify(nextTodos))
@@ -320,6 +374,10 @@ export function useTodos() {
     totalActiveCount,
     totalCompletedCount,
     hasActiveFilters,
+    projectSummaries,
+    hasProjectDashboard,
+    selectedProjectKey,
+    selectedProjectLabel,
     availableTags,
     selectedTodo,
     addTodo,
@@ -331,13 +389,16 @@ export function useTodos() {
     togglePriorityFilter,
     toggleTypeFilter,
     toggleTagFilter,
+    setProjectFilter,
     resetFilters,
     removeTodo,
     clearCompleted,
     copyTaskAiContext,
     copyActiveAiContext,
     copyProjectAiContext,
+    copyProjectGroupAiContext,
     exportProjectAiContext,
+    exportProjectGroupAiContext,
     openExportedAiContext,
     revealExportedAiContext,
     exportTodosJson,

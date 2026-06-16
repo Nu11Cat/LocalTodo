@@ -446,6 +446,97 @@ describe('useTodos', () => {
     )
   })
 
+  it('summarizes projects and filters by selected project', () => {
+    const todos = useTodos()
+
+    todos.draftTitle.value = 'LocalTodo task'
+    todos.addTodo()
+    todos.updateTodo(todos.todos.value[0].id, {
+      projectName: 'LocalTodo',
+      repoPath: 'G:/Zhao/nu11cat/LocalTodo'
+    })
+    todos.draftTitle.value = 'Other task'
+    todos.addTodo()
+    todos.updateTodo(todos.todos.value[0].id, { projectName: 'OtherProject' })
+
+    const localTodoKey = 'LocalTodo\nG:/Zhao/nu11cat/LocalTodo'
+
+    expect(todos.hasProjectDashboard.value).toBe(true)
+    expect(todos.projectSummaries.value.map((summary) => summary.label)).toEqual([
+      'LocalTodo',
+      'OtherProject'
+    ])
+
+    todos.setProjectFilter(localTodoKey)
+
+    expect(todos.selectedProjectKey.value).toBe(localTodoKey)
+    expect(todos.selectedProjectLabel.value).toBe('LocalTodo')
+    expect(todos.activeTodos.value.map((todo) => todo.title)).toEqual(['LocalTodo task'])
+
+    todos.setProjectFilter(null)
+
+    expect(todos.selectedProjectKey.value).toBeNull()
+    expect(todos.activeTodos.value).toHaveLength(2)
+  })
+
+  it('clears the selected project when its group disappears', () => {
+    const todos = useTodos()
+
+    todos.draftTitle.value = 'Temporary project task'
+    todos.addTodo()
+    todos.updateTodo(todos.todos.value[0].id, { projectName: 'Temporary' })
+    todos.setProjectFilter('Temporary\n')
+
+    todos.removeTodo(todos.todos.value[0].id)
+
+    expect(todos.selectedProjectKey.value).toBeNull()
+  })
+
+  it('copies AI context for a project group', async () => {
+    const todos = useTodos()
+
+    todos.draftTitle.value = 'LocalTodo context task'
+    todos.addTodo()
+    todos.updateTodo(todos.todos.value[0].id, { projectName: 'LocalTodo' })
+    todos.draftTitle.value = 'Other context task'
+    todos.addTodo()
+    todos.updateTodo(todos.todos.value[0].id, { projectName: 'OtherProject' })
+
+    const result = await todos.copyProjectGroupAiContext('LocalTodo\n')
+
+    expect(result).toBe(true)
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(expect.stringContaining('## LocalTodo'))
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
+      expect.stringContaining('## LocalTodo context task')
+    )
+    expect(navigator.clipboard.writeText).not.toHaveBeenCalledWith(
+      expect.stringContaining('## Other context task')
+    )
+  })
+
+  it('exports AI context for a project group', async () => {
+    const todos = useTodos()
+
+    todos.draftTitle.value = 'Scoped export task'
+    todos.addTodo()
+    todos.updateTodo(todos.todos.value[0].id, {
+      projectName: 'LocalTodo',
+      repoPath: 'G:/Zhao/nu11cat/LocalTodo'
+    })
+    todos.draftTitle.value = 'Foreign export task'
+    todos.addTodo()
+    todos.updateTodo(todos.todos.value[0].id, { projectName: 'OtherProject' })
+
+    const result = await todos.exportProjectGroupAiContext('LocalTodo\nG:/Zhao/nu11cat/LocalTodo')
+
+    expect(result).toEqual({ status: 'written', filePath: 'AI_CONTEXT.md' })
+    expect(window.api.exportProjectAiContext).toHaveBeenCalledWith({
+      markdown: expect.stringContaining('## Scoped export task'),
+      suggestedFileName: 'AI_CONTEXT.md',
+      suggestedPath: 'G:/Zhao/nu11cat/LocalTodo/.localtodo/AI_CONTEXT.md'
+    })
+  })
+
   it('copies project-level AI context for all tasks', async () => {
     const todos = useTodos()
 

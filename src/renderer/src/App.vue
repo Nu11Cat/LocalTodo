@@ -8,6 +8,7 @@ import { taskPriorities, taskStatuses, taskTypes } from './domain/taskModel'
 const fileInput = ref<HTMLInputElement | null>(null)
 const projectContextExportMessage = ref('')
 const lastExportedFilePath = ref<string | null>(null)
+const lastExportedAiContextFilePath = ref<string | null>(null)
 
 const {
   draftTitle,
@@ -43,6 +44,7 @@ const {
   copyProjectGroupAiContext,
   exportProjectAiContext,
   exportProjectGroupAiContext,
+  exportLocalTodoProject,
   openExportedAiContext,
   revealExportedAiContext,
   downloadTodosJson,
@@ -81,6 +83,7 @@ async function handleProjectContextExport(
 ): Promise<void> {
   projectContextExportMessage.value = 'Exporting project context...'
   lastExportedFilePath.value = null
+  lastExportedAiContextFilePath.value = null
 
   const result = await exporter()
 
@@ -106,6 +109,22 @@ async function exportProjectGroupContext(key: string): Promise<void> {
   await handleProjectContextExport(() => exportProjectGroupAiContext(key))
 }
 
+async function exportProjectLocalTodo(key: string): Promise<void> {
+  projectContextExportMessage.value = 'Exporting .localtodo workspace...'
+  lastExportedFilePath.value = null
+  lastExportedAiContextFilePath.value = null
+
+  const result = await exportLocalTodoProject(key)
+
+  if (result.status === 'written') {
+    lastExportedAiContextFilePath.value = result.aiContextFilePath
+    projectContextExportMessage.value = `Saved .localtodo workspace to ${result.dirPath}`
+    return
+  }
+
+  projectContextExportMessage.value = `Export failed: ${result.message}`
+}
+
 async function openLastExport(): Promise<void> {
   if (!lastExportedFilePath.value) {
     return
@@ -124,6 +143,30 @@ async function revealLastExport(): Promise<void> {
   }
 
   const result = await revealExportedAiContext(lastExportedFilePath.value)
+
+  if (result.status === 'error') {
+    projectContextExportMessage.value = `Reveal failed: ${result.message}`
+  }
+}
+
+async function openLastAiContextFile(): Promise<void> {
+  if (!lastExportedAiContextFilePath.value) {
+    return
+  }
+
+  const result = await openExportedAiContext(lastExportedAiContextFilePath.value)
+
+  if (result.status === 'error') {
+    projectContextExportMessage.value = `Open failed: ${result.message}`
+  }
+}
+
+async function revealLastDir(): Promise<void> {
+  if (!lastExportedAiContextFilePath.value) {
+    return
+  }
+
+  const result = await revealExportedAiContext(lastExportedAiContextFilePath.value)
 
   if (result.status === 'error') {
     projectContextExportMessage.value = `Reveal failed: ${result.message}`
@@ -183,6 +226,10 @@ async function revealLastExport(): Promise<void> {
           <button type="button" class="ghost-button" @click="openLastExport">Open file</button>
           <button type="button" class="ghost-button" @click="revealLastExport">Show in folder</button>
         </span>
+        <span v-if="lastExportedAiContextFilePath" class="post-export-actions">
+          <button type="button" class="ghost-button" @click="openLastAiContextFile">Open AI context</button>
+          <button type="button" class="ghost-button" @click="revealLastDir">Open folder</button>
+        </span>
       </div>
     </section>
 
@@ -193,6 +240,7 @@ async function revealLastExport(): Promise<void> {
       @select="setProjectFilter"
       @copy="copyProjectGroupAiContext"
       @export="exportProjectGroupContext"
+      @export-local-todo="exportProjectLocalTodo"
     />
 
     <section class="filter-bar" aria-labelledby="filter-title">

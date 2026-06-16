@@ -21,7 +21,13 @@ beforeEach(() => {
     api: {
       exportProjectAiContext: vi.fn().mockResolvedValue({ status: 'written', filePath: 'AI_CONTEXT.md' }),
       openExportedAiContextFile: vi.fn().mockResolvedValue({ status: 'opened' }),
-      revealExportedAiContextFile: vi.fn().mockResolvedValue({ status: 'revealed' })
+      revealExportedAiContextFile: vi.fn().mockResolvedValue({ status: 'revealed' }),
+      exportLocalTodoProject: vi.fn().mockResolvedValue({
+        status: 'written',
+        dirPath: 'G:/repo/.localtodo',
+        aiContextFilePath: 'G:/repo/.localtodo/AI_CONTEXT.md',
+        tasksJsonFilePath: 'G:/repo/.localtodo/tasks.json'
+      })
     }
   })
 })
@@ -714,19 +720,64 @@ describe('useTodos', () => {
     expect(todos.selectedTodoId.value).toBeNull()
   })
 
-  it('does not replace tasks when importing invalid JSON', async () => {
+  it('exports .localtodo workspace for a project group', async () => {
     const todos = useTodos()
-    const file = {
-      text: vi.fn().mockResolvedValue('{')
-    } as unknown as File
 
-    todos.draftTitle.value = 'Keep existing'
+    todos.draftTitle.value = 'LocalTodo workspace task'
     todos.addTodo()
+    todos.updateTodo(todos.todos.value[0].id, {
+      projectName: 'LocalTodo',
+      repoPath: 'G:/Zhao/nu11cat/LocalTodo'
+    })
+    todos.draftTitle.value = 'Foreign workspace task'
+    todos.addTodo()
+    todos.updateTodo(todos.todos.value[0].id, { projectName: 'OtherProject' })
 
-    const result = await todos.importTodosJson(file)
+    const result = await todos.exportLocalTodoProject('LocalTodo\nG:/Zhao/nu11cat/LocalTodo')
 
-    expect(result).toBe(false)
-    expect(todos.todos.value).toHaveLength(1)
-    expect(todos.todos.value[0].title).toBe('Keep existing')
+    expect(result).toEqual({
+      status: 'written',
+      dirPath: 'G:/repo/.localtodo',
+      aiContextFilePath: 'G:/repo/.localtodo/AI_CONTEXT.md',
+      tasksJsonFilePath: 'G:/repo/.localtodo/tasks.json'
+    })
+    expect(window.api.exportLocalTodoProject).toHaveBeenCalledWith({
+      repoPath: 'G:/Zhao/nu11cat/LocalTodo',
+      markdown: expect.stringContaining('## LocalTodo workspace task'),
+      tasksJson: expect.stringContaining('"title": "LocalTodo workspace task"')
+    })
+  })
+
+  it('returns an error when exporting .localtodo for a project without a repo path', async () => {
+    const todos = useTodos()
+
+    todos.draftTitle.value = 'No repo task'
+    todos.addTodo()
+    todos.updateTodo(todos.todos.value[0].id, { projectName: 'NoRepoProject' })
+
+    const result = await todos.exportLocalTodoProject('NoRepoProject\n')
+
+    expect(result).toEqual({
+      status: 'error',
+      message: 'Project does not have a repository path.'
+    })
+    expect(window.api.exportLocalTodoProject).not.toHaveBeenCalled()
+  })
+
+  it('returns an error when .localtodo project export is unavailable', async () => {
+    vi.stubGlobal('window', { api: { platform: 'win32' } })
+    const todos = useTodos()
+
+    todos.draftTitle.value = 'Missing bridge task'
+    todos.addTodo()
+    todos.updateTodo(todos.todos.value[0].id, {
+      projectName: 'LocalTodo',
+      repoPath: 'G:/Zhao/nu11cat/LocalTodo'
+    })
+
+    await expect(todos.exportLocalTodoProject('LocalTodo\nG:/Zhao/nu11cat/LocalTodo')).resolves.toEqual({
+      status: 'error',
+      message: '.localtodo project export is not available.'
+    })
   })
 })

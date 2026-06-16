@@ -17,9 +17,20 @@ type ExportProjectAiContextResult =
 type OpenExportedAiContextResult = { status: 'opened' } | { status: 'error'; message: string }
 type RevealExportedAiContextResult = { status: 'revealed' } | { status: 'error'; message: string }
 
+type ExportLocalTodoProjectPayload = {
+  repoPath?: unknown
+  markdown?: unknown
+  tasksJson?: unknown
+}
+
+type ExportLocalTodoProjectResult =
+  | { status: 'written'; dirPath: string; aiContextFilePath: string; tasksJsonFilePath: string }
+  | { status: 'error'; message: string }
+
 const exportProjectAiContextChannel = 'aiContext:exportProject'
 const openExportedAiContextChannel = 'aiContext:openExportedFile'
 const revealExportedAiContextChannel = 'aiContext:revealExportedFile'
+const exportLocalTodoProjectChannel = 'localtodo:exportProject'
 const exportedPathsByWebContents = new WeakMap<WebContents, Set<string>>()
 
 function sanitizeFileName(value: unknown): string {
@@ -146,6 +157,50 @@ function registerExportedFileActionHandlers(): void {
   )
 }
 
+function registerLocalTodoProjectExportHandler(): void {
+  ipcMain.handle(
+    exportLocalTodoProjectChannel,
+    async (event, payload: ExportLocalTodoProjectPayload): Promise<ExportLocalTodoProjectResult> => {
+      if (typeof payload?.repoPath !== 'string' || payload.repoPath.trim() === '') {
+        return { status: 'error', message: 'Project repository path is missing.' }
+      }
+
+      const repoPath = normalize(payload.repoPath.trim())
+
+      if (!isAbsolute(repoPath)) {
+        return { status: 'error', message: 'Project repository path must be absolute.' }
+      }
+
+      if (typeof payload.markdown !== 'string' || payload.markdown.trim() === '') {
+        return { status: 'error', message: 'Project AI context is empty.' }
+      }
+
+      if (typeof payload.tasksJson !== 'string' || payload.tasksJson.trim() === '') {
+        return { status: 'error', message: 'Project tasks JSON is empty.' }
+      }
+
+      try {
+        const dirPath = join(repoPath, '.localtodo')
+        const aiContextFilePath = join(dirPath, 'AI_CONTEXT.md')
+        const tasksJsonFilePath = join(dirPath, 'tasks.json')
+
+        await mkdir(dirPath, { recursive: true })
+        await writeFile(aiContextFilePath, payload.markdown, 'utf8')
+        await writeFile(tasksJsonFilePath, payload.tasksJson, 'utf8')
+        trackExportedPath(event.sender, aiContextFilePath)
+        trackExportedPath(event.sender, tasksJsonFilePath)
+
+        return { status: 'written', dirPath, aiContextFilePath, tasksJsonFilePath }
+      } catch (error) {
+        return {
+          status: 'error',
+          message: error instanceof Error ? error.message : 'Failed to export .localtodo project workspace.'
+        }
+      }
+    }
+  )
+}
+
 function createWindow(): void {
   const mainWindow = new BrowserWindow({
     width: 1000,
@@ -182,6 +237,7 @@ app.whenReady().then(() => {
   app.setAppUserModelId('com.nu11cat.localtodo')
   registerAiContextExportHandler()
   registerExportedFileActionHandlers()
+  registerLocalTodoProjectExportHandler()
 
   createWindow()
 

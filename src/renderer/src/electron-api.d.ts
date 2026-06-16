@@ -1,4 +1,6 @@
 import type {
+  ExportLocalTodoProjectPayload,
+  ExportLocalTodoProjectResult,
   ExportProjectAiContextPayload,
   ExportProjectAiContextResult,
   OpenExportedAiContextResult,
@@ -15,6 +17,7 @@ declare global {
       ) => Promise<ExportProjectAiContextResult>
       openExportedAiContextFile: (filePath: string) => Promise<OpenExportedAiContextResult>
       revealExportedAiContextFile: (filePath: string) => Promise<RevealExportedAiContextResult>
+      exportLocalTodoProject: (payload: ExportLocalTodoProjectPayload) => Promise<ExportLocalTodoProjectResult>
     }
   }
 }

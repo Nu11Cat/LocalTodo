@@ -1,5 +1,7 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import type {
+  ExportLocalTodoProjectPayload,
+  ExportLocalTodoProjectResult,
   ExportProjectAiContextPayload,
   ExportProjectAiContextResult,
   OpenExportedAiContextResult,
@@ -14,7 +16,10 @@ const api = {
   openExportedAiContextFile: (filePath: string): Promise<OpenExportedAiContextResult> =>
     ipcRenderer.invoke('aiContext:openExportedFile', filePath),
   revealExportedAiContextFile: (filePath: string): Promise<RevealExportedAiContextResult> =>
-    ipcRenderer.invoke('aiContext:revealExportedFile', filePath)
+    ipcRenderer.invoke('aiContext:revealExportedFile', filePath),
+  exportLocalTodoProject: (
+    payload: ExportLocalTodoProjectPayload
+  ): Promise<ExportLocalTodoProjectResult> => ipcRenderer.invoke('localtodo:exportProject', payload)
 }
 
 if (process.contextIsolated) {

@@ -34,6 +34,10 @@ type ExportProjectAiContextResult =
   | { status: 'cancelled' }
   | { status: 'error'; message: string }
 
+type ExportLocalTodoProjectResult =
+  | { status: 'written'; dirPath: string; aiContextFilePath: string; tasksJsonFilePath: string }
+  | { status: 'error'; message: string }
+
 type OpenExportedAiContextResult = { status: 'opened' } | { status: 'error'; message: string }
 type RevealExportedAiContextResult = { status: 'revealed' } | { status: 'error'; message: string }
 
@@ -301,6 +305,30 @@ export function useTodos() {
     })
   }
 
+  async function exportLocalTodoProject(key: string): Promise<ExportLocalTodoProjectResult> {
+    if (!window.api?.exportLocalTodoProject) {
+      return { status: 'error', message: '.localtodo project export is not available.' }
+    }
+
+    const summary = findProjectSummary(projectSummaries.value, key)
+
+    if (!summary) {
+      return { status: 'error', message: 'Project was not found.' }
+    }
+
+    const repoPath = summary.repoPath
+
+    if (!repoPath) {
+      return { status: 'error', message: 'Project does not have a repository path.' }
+    }
+
+    return window.api.exportLocalTodoProject({
+      repoPath,
+      markdown: generateProjectAiContext(summary.tasks),
+      tasksJson: serializeDataFile(summary.tasks)
+    })
+  }
+
   async function openExportedAiContext(filePath: string): Promise<OpenExportedAiContextResult> {
     if (!window.api?.openExportedAiContextFile) {
       return { status: 'error', message: 'Open exported AI context is not available.' }
@@ -399,6 +427,7 @@ export function useTodos() {
     copyProjectGroupAiContext,
     exportProjectAiContext,
     exportProjectGroupAiContext,
+    exportLocalTodoProject,
     openExportedAiContext,
     revealExportedAiContext,
     exportTodosJson,

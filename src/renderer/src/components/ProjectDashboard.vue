@@ -10,6 +10,7 @@ const emit = defineEmits<{
   select: [key: string | null]
   copy: [key: string]
   export: [key: string]
+  exportLocalTodo: [key: string]
 }>()
 
 function hasSingleRepoPath(summary: ProjectSummary): boolean {
@@ -78,6 +79,14 @@ function selectProject(key: string): void {
             @click="emit('export', summary.key)"
           >
             Export context
+          </button>
+          <button
+            v-if="hasSingleRepoPath(summary)"
+            type="button"
+            class="ghost-button"
+            @click="emit('exportLocalTodo', summary.key)"
+          >
+            Export .localtodo/
           </button>
         </div>
       </article>

@@ -1,11 +1,46 @@
 import { nextTick } from 'vue'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useTodos } from './useTodos'
 
 const storage = new Map<string, string>()
+const fileStorage = new Map<string, string>()
+
+function flushPromises(): Promise<void> {
+  // Flush microtasks enough times for async saveData to resolve.
+  return Promise.resolve().then(() => Promise.resolve()).then(() => Promise.resolve())
+}
+
+function createMockApi() {
+  return {
+    platform: 'win32',
+    exportProjectAiContext: vi.fn().mockResolvedValue({ status: 'written', filePath: 'AI_CONTEXT.md' }),
+    openExportedAiContextFile: vi.fn().mockResolvedValue({ status: 'opened' }),
+    revealExportedAiContextFile: vi.fn().mockResolvedValue({ status: 'revealed' }),
+    exportLocalTodoProject: vi.fn().mockResolvedValue({
+      status: 'written',
+      dirPath: 'G:/repo/.localtodo',
+      aiContextFilePath: 'G:/repo/.localtodo/AI_CONTEXT.md',
+      tasksJsonFilePath: 'G:/repo/.localtodo/tasks.json'
+    }),
+    loadData: vi.fn().mockImplementation((): Promise<{ status: 'ok'; data: string } | { status: 'missing' }> => {
+      if (fileStorage.has('data.json')) {
+        return Promise.resolve({ status: 'ok', data: fileStorage.get('data.json')! })
+      }
+
+      return Promise.resolve({ status: 'missing' })
+    }),
+    saveData: vi.fn().mockImplementation((payload: string): Promise<{ status: 'saved' }> => {
+      fileStorage.set('data.json', payload)
+      return Promise.resolve({ status: 'saved' })
+    })
+  }
+}
 
 beforeEach(() => {
   storage.clear()
+  fileStorage.clear()
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] })
+  vi.setSystemTime(new Date('2026-06-16T00:00:00.000Z'))
   vi.stubGlobal('localStorage', {
     getItem: vi.fn((key: string) => storage.get(key) ?? null),
     setItem: vi.fn((key: string, value: string) => storage.set(key, value)),
@@ -18,23 +53,24 @@ beforeEach(() => {
     }
   })
   vi.stubGlobal('window', {
-    api: {
-      exportProjectAiContext: vi.fn().mockResolvedValue({ status: 'written', filePath: 'AI_CONTEXT.md' }),
-      openExportedAiContextFile: vi.fn().mockResolvedValue({ status: 'opened' }),
-      revealExportedAiContextFile: vi.fn().mockResolvedValue({ status: 'revealed' }),
-      exportLocalTodoProject: vi.fn().mockResolvedValue({
-        status: 'written',
-        dirPath: 'G:/repo/.localtodo',
-        aiContextFilePath: 'G:/repo/.localtodo/AI_CONTEXT.md',
-        tasksJsonFilePath: 'G:/repo/.localtodo/tasks.json'
-      })
-    }
+    api: createMockApi()
   })
 })
 
+afterEach(() => {
+  vi.useRealTimers()
+})
+
+async function advanceSaveDebounce(): Promise<void> {
+  vi.advanceTimersByTime(400)
+  await flushPromises()
+  await nextTick()
+}
+
 describe('useTodos', () => {
-  it('adds a task from the draft title', () => {
+  it('adds a task from the draft title', async () => {
     const todos = useTodos()
+    await todos.loaded
 
     todos.draftTitle.value = 'Buy milk'
     todos.addTodo()
@@ -53,8 +89,9 @@ describe('useTodos', () => {
     expect(todos.draftTitle.value).toBe('')
   })
 
-  it('does not add blank tasks', () => {
+  it('does not add blank tasks', async () => {
     const todos = useTodos()
+    await todos.loaded
 
     todos.draftTitle.value = '   '
     todos.addTodo()
@@ -62,8 +99,9 @@ describe('useTodos', () => {
     expect(todos.todos.value).toHaveLength(0)
   })
 
-  it('toggles tasks between active and completed lists', () => {
+  it('toggles tasks between active and completed lists', async () => {
     const todos = useTodos()
+    await todos.loaded
 
     todos.draftTitle.value = 'Ship feature'
     todos.addTodo()
@@ -86,8 +124,9 @@ describe('useTodos', () => {
     expect(todos.completedTodos.value).toHaveLength(0)
   })
 
-  it('clears completed tasks', () => {
+  it('clears completed tasks', async () => {
     const todos = useTodos()
+    await todos.loaded
 
     todos.draftTitle.value = 'Keep this'
     todos.addTodo()
@@ -101,8 +140,9 @@ describe('useTodos', () => {
     expect(todos.todos.value[0].title).toBe('Keep this')
   })
 
-  it('clears completed tasks without deleting active tasks hidden by filters', () => {
+  it('clears completed tasks without deleting active tasks hidden by filters', async () => {
     const todos = useTodos()
+    await todos.loaded
 
     todos.draftTitle.value = 'Visible active'
     todos.addTodo()
@@ -118,7 +158,55 @@ describe('useTodos', () => {
     expect(todos.todos.value.map((todo) => todo.title)).toEqual(['Hidden active', 'Visible active'])
   })
 
-  it('migrates legacy todos from localStorage', () => {
+  it('loads tasks from file storage', async () => {
+    fileStorage.set(
+      'data.json',
+      JSON.stringify({
+        schemaVersion: 1,
+        exportedAt: '2026-06-16T03:00:00.000Z',
+        tasks: [
+          {
+            id: 'loaded-task',
+            title: 'Loaded task',
+            status: 'doing',
+            priority: 'high',
+            type: 'feature',
+            tags: ['loaded'],
+            description: 'Loaded description',
+            projectName: 'LocalTodo',
+            repoPath: 'G:/Zhao/nu11cat/LocalTodo',
+            relatedFiles: ['src/renderer/src/App.vue'],
+            commands: ['npm test'],
+            createdAt: '2026-06-16T01:00:00.000Z',
+            updatedAt: '2026-06-16T02:00:00.000Z'
+          }
+        ]
+      })
+    )
+
+    const todos = useTodos()
+    await todos.loaded
+
+    expect(todos.todos.value).toEqual([
+      {
+        id: 'loaded-task',
+        title: 'Loaded task',
+        status: 'doing',
+        priority: 'high',
+        type: 'feature',
+        tags: ['loaded'],
+        description: 'Loaded description',
+        projectName: 'LocalTodo',
+        repoPath: 'G:/Zhao/nu11cat/LocalTodo',
+        relatedFiles: ['src/renderer/src/App.vue'],
+        commands: ['npm test'],
+        createdAt: '2026-06-16T01:00:00.000Z',
+        updatedAt: '2026-06-16T02:00:00.000Z'
+      }
+    ])
+  })
+
+  it('migrates legacy todos from localStorage when data file is missing', async () => {
     storage.set(
       'localtodo.todos',
       JSON.stringify([
@@ -138,6 +226,7 @@ describe('useTodos', () => {
     )
 
     const todos = useTodos()
+    await todos.loaded
 
     expect(todos.todos.value).toEqual([
       {
@@ -167,18 +256,85 @@ describe('useTodos', () => {
         updatedAt: '2026-06-16T02:00:00.000Z'
       }
     ])
+    expect(window.api.saveData).toHaveBeenCalledWith(expect.stringContaining('"Old open todo"'))
+    expect(window.api.saveData).toHaveBeenCalledWith(expect.stringContaining('"Old completed todo"'))
+    expect(storage.get('localtodo.todos')).toBeUndefined()
   })
 
-  it('persists upgraded tasks to localStorage', async () => {
+  it('keeps legacy localStorage when migration save fails', async () => {
+    storage.set(
+      'localtodo.todos',
+      JSON.stringify([
+        {
+          id: 'legacy-open',
+          title: 'Old open todo',
+          completed: false,
+          createdAt: '2026-06-16T01:00:00.000Z'
+        }
+      ])
+    )
+    vi.mocked(window.api.saveData).mockResolvedValue({ status: 'error', message: 'Disk full' })
+
     const todos = useTodos()
+    await todos.loaded
+
+    expect(todos.todos.value).toHaveLength(1)
+    expect(storage.get('localtodo.todos')).toContain('Old open todo')
+  })
+
+  it('does not overwrite an unreadable data file with an empty task list', async () => {
+    fileStorage.set('data.json', '{not-json')
+
+    const todos = useTodos()
+    await todos.loaded
+    await nextTick()
+    await advanceSaveDebounce()
+
+    expect(todos.todos.value).toEqual([])
+    expect(todos.loadErrorMessage.value).toBe(
+      'Saved data could not be read. Your existing data file was left unchanged.'
+    )
+    expect(window.api.saveData).not.toHaveBeenCalled()
+    expect(fileStorage.get('data.json')).toBe('{not-json')
+  })
+
+  it('starts empty when both file and localStorage are missing', async () => {
+    const todos = useTodos()
+    await todos.loaded
+
+    expect(todos.todos.value).toEqual([])
+    expect(window.api.saveData).not.toHaveBeenCalled()
+  })
+
+  it('does not add tasks before saved data finishes loading', async () => {
+    const todos = useTodos()
+
+    todos.draftTitle.value = 'Too early'
+    todos.addTodo()
+
+    await todos.loaded
+
+    expect(todos.todos.value).toEqual([])
+  })
+
+  it('persists added tasks to file storage', async () => {
+    const todos = useTodos()
+    await todos.loaded
 
     todos.draftTitle.value = 'Persist this'
     todos.addTodo()
     await nextTick()
 
-    const storedTodos = JSON.parse(storage.get('localtodo.todos') ?? '[]')
+    expect(window.api.saveData).not.toHaveBeenCalled()
 
-    expect(storedTodos[0]).toMatchObject({
+    await advanceSaveDebounce()
+
+    expect(window.api.saveData).toHaveBeenCalledWith(expect.stringContaining('"Persist this"'))
+
+    const data = JSON.parse(fileStorage.get('data.json') ?? '{}')
+
+    expect(data.schemaVersion).toBe(1)
+    expect(data.tasks[0]).toMatchObject({
       title: 'Persist this',
       status: 'todo',
       priority: 'medium',
@@ -186,8 +342,9 @@ describe('useTodos', () => {
     })
   })
 
-  it('selects a task and updates editable fields', () => {
+  it('selects a task and updates editable fields', async () => {
     const todos = useTodos()
+    await todos.loaded
 
     todos.draftTitle.value = 'Edit me'
     todos.addTodo()
@@ -224,8 +381,9 @@ describe('useTodos', () => {
     })
   })
 
-  it('clears optional project metadata with null patches', () => {
+  it('clears optional project metadata with null patches', async () => {
     const todos = useTodos()
+    await todos.loaded
 
     todos.draftTitle.value = 'Clear project'
     todos.addTodo()
@@ -238,10 +396,10 @@ describe('useTodos', () => {
     expect(todos.todos.value[0].repoPath).toBeUndefined()
   })
 
-  it('updates timestamps when editing tasks', () => {
-    vi.useFakeTimers()
+  it('updates timestamps when editing tasks', async () => {
     vi.setSystemTime(new Date('2026-06-16T05:00:00.000Z'))
     const todos = useTodos()
+    await todos.loaded
 
     todos.draftTitle.value = 'Timestamp me'
     todos.addTodo()
@@ -251,18 +409,19 @@ describe('useTodos', () => {
     todos.updateTodo(taskId, { description: 'Updated' })
 
     expect(todos.todos.value[0].updatedAt).toBe('2026-06-16T06:00:00.000Z')
-    vi.useRealTimers()
   })
 
-  it('returns false when updating a missing task', () => {
+  it('returns false when updating a missing task', async () => {
     const todos = useTodos()
+    await todos.loaded
 
     expect(todos.updateTodo('missing-task', { status: 'done' })).toBe(false)
     expect(todos.todos.value).toHaveLength(0)
   })
 
-  it('moves tasks between computed lists when status is updated', () => {
+  it('moves tasks between computed lists when status is updated', async () => {
     const todos = useTodos()
+    await todos.loaded
 
     todos.draftTitle.value = 'Move me'
     todos.addTodo()
@@ -279,8 +438,9 @@ describe('useTodos', () => {
     expect(todos.completedTodos.value).toHaveLength(0)
   })
 
-  it('clears selection when removing the selected task', () => {
+  it('clears selection when removing the selected task', async () => {
     const todos = useTodos()
+    await todos.loaded
 
     todos.draftTitle.value = 'Remove selected'
     todos.addTodo()
@@ -293,8 +453,9 @@ describe('useTodos', () => {
     expect(todos.selectedTodo.value).toBeNull()
   })
 
-  it('persists updated fields to localStorage', async () => {
+  it('persists updated fields to file storage', async () => {
     const todos = useTodos()
+    await todos.loaded
 
     todos.draftTitle.value = 'Persist edited fields'
     todos.addTodo()
@@ -309,10 +470,11 @@ describe('useTodos', () => {
       commands: ['npm test']
     })
     await nextTick()
+    await advanceSaveDebounce()
 
-    const storedTodos = JSON.parse(storage.get('localtodo.todos') ?? '[]')
+    const data = JSON.parse(fileStorage.get('data.json') ?? '{}')
 
-    expect(storedTodos[0]).toMatchObject({
+    expect(data.tasks[0]).toMatchObject({
       priority: 'urgent',
       type: 'bug',
       tags: ['persisted'],
@@ -324,8 +486,74 @@ describe('useTodos', () => {
     })
   })
 
-  it('filters tasks by keyword and resets filters', () => {
+  it('does not throw when file save fails', async () => {
+    vi.mocked(window.api.saveData).mockResolvedValue({ status: 'error', message: 'Disk full' })
     const todos = useTodos()
+    await todos.loaded
+
+    todos.draftTitle.value = 'Unsaved task'
+    todos.addTodo()
+    await nextTick()
+
+    await expect(advanceSaveDebounce()).resolves.not.toThrow()
+    expect(todos.todos.value).toHaveLength(1)
+  })
+
+  it('serializes overlapping file saves in mutation order', async () => {
+    const saveCalls: string[] = []
+    let firstSaveResolved = false
+    const firstSave = {
+      resolve: undefined as undefined | ((result: { status: 'saved' }) => void)
+    }
+    vi.mocked(window.api.saveData).mockImplementation(
+      (payload: string): Promise<{ status: 'saved' }> => {
+        saveCalls.push(payload)
+
+        if (saveCalls.length === 1) {
+          return new Promise((resolve) => {
+            firstSave.resolve = resolve
+          })
+        }
+
+        expect(firstSaveResolved).toBe(true)
+        return Promise.resolve({ status: 'saved' })
+      }
+    )
+    const todos = useTodos()
+    await todos.loaded
+
+    todos.draftTitle.value = 'First save'
+    todos.addTodo()
+    await nextTick()
+    vi.advanceTimersByTime(400)
+    await flushPromises()
+
+    todos.draftTitle.value = 'Second save'
+    todos.addTodo()
+    await nextTick()
+    vi.advanceTimersByTime(400)
+    await flushPromises()
+
+    expect(saveCalls).toHaveLength(1)
+
+    if (!firstSave.resolve) {
+      throw new Error('First save was not started.')
+    }
+
+    firstSaveResolved = true
+    firstSave.resolve({ status: 'saved' })
+    await flushPromises()
+
+    expect(saveCalls).toHaveLength(2)
+    expect(saveCalls[0]).toContain('"First save"')
+    expect(saveCalls[0]).not.toContain('"Second save"')
+    expect(saveCalls[1]).toContain('"First save"')
+    expect(saveCalls[1]).toContain('"Second save"')
+  })
+
+  it('filters tasks by keyword and resets filters', async () => {
+    const todos = useTodos()
+    await todos.loaded
 
     todos.draftTitle.value = 'Buy milk'
     todos.addTodo()
@@ -344,8 +572,9 @@ describe('useTodos', () => {
     expect(todos.activeTodos.value).toHaveLength(2)
   })
 
-  it('toggles status, priority, and type filters', () => {
+  it('toggles status, priority, and type filters', async () => {
     const todos = useTodos()
+    await todos.loaded
 
     todos.draftTitle.value = 'Filter target'
     todos.addTodo()
@@ -376,8 +605,9 @@ describe('useTodos', () => {
     expect(todos.hasActiveFilters.value).toBe(false)
   })
 
-  it('filters by tags and lists available tags', () => {
+  it('filters by tags and lists available tags', async () => {
     const todos = useTodos()
+    await todos.loaded
 
     todos.draftTitle.value = 'Alpha task'
     todos.addTodo()
@@ -395,8 +625,9 @@ describe('useTodos', () => {
     expect(todos.activeTodos.value.map((todo) => todo.title)).toEqual(['Alpha task'])
   })
 
-  it('tracks filtered and total counts separately', () => {
+  it('tracks filtered and total counts separately', async () => {
     const todos = useTodos()
+    await todos.loaded
 
     todos.draftTitle.value = 'Open task'
     todos.addTodo()
@@ -413,6 +644,7 @@ describe('useTodos', () => {
 
   it('copies AI context for a task', async () => {
     const todos = useTodos()
+    await todos.loaded
 
     todos.draftTitle.value = 'Explain this task'
     todos.addTodo()
@@ -427,6 +659,7 @@ describe('useTodos', () => {
 
   it('returns false when copying a missing task context', async () => {
     const todos = useTodos()
+    await todos.loaded
 
     const result = await todos.copyTaskAiContext('missing-task')
 
@@ -436,6 +669,7 @@ describe('useTodos', () => {
 
   it('copies AI context for active tasks', async () => {
     const todos = useTodos()
+    await todos.loaded
 
     todos.draftTitle.value = 'Active task'
     todos.addTodo()
@@ -452,8 +686,9 @@ describe('useTodos', () => {
     )
   })
 
-  it('summarizes projects and filters by selected project', () => {
+  it('summarizes projects and filters by selected project', async () => {
     const todos = useTodos()
+    await todos.loaded
 
     todos.draftTitle.value = 'LocalTodo task'
     todos.addTodo()
@@ -485,8 +720,9 @@ describe('useTodos', () => {
     expect(todos.activeTodos.value).toHaveLength(2)
   })
 
-  it('clears the selected project when its group disappears', () => {
+  it('clears the selected project when its group disappears', async () => {
     const todos = useTodos()
+    await todos.loaded
 
     todos.draftTitle.value = 'Temporary project task'
     todos.addTodo()
@@ -500,6 +736,7 @@ describe('useTodos', () => {
 
   it('copies AI context for a project group', async () => {
     const todos = useTodos()
+    await todos.loaded
 
     todos.draftTitle.value = 'LocalTodo context task'
     todos.addTodo()
@@ -522,6 +759,7 @@ describe('useTodos', () => {
 
   it('exports AI context for a project group', async () => {
     const todos = useTodos()
+    await todos.loaded
 
     todos.draftTitle.value = 'Scoped export task'
     todos.addTodo()
@@ -545,6 +783,7 @@ describe('useTodos', () => {
 
   it('copies project-level AI context for all tasks', async () => {
     const todos = useTodos()
+    await todos.loaded
 
     todos.draftTitle.value = 'Visible project task'
     todos.addTodo()
@@ -572,6 +811,7 @@ describe('useTodos', () => {
 
   it('exports project-level AI context through the preload bridge', async () => {
     const todos = useTodos()
+    await todos.loaded
 
     todos.draftTitle.value = 'Export context task'
     todos.addTodo()
@@ -593,6 +833,7 @@ describe('useTodos', () => {
   it('returns preload export results without throwing', async () => {
     vi.mocked(window.api.exportProjectAiContext).mockResolvedValueOnce({ status: 'cancelled' })
     const todos = useTodos()
+    await todos.loaded
 
     todos.draftTitle.value = 'Cancel export'
     todos.addTodo()
@@ -603,6 +844,7 @@ describe('useTodos', () => {
   it('returns an error when project context export is unavailable', async () => {
     vi.stubGlobal('window', { api: { platform: 'win32' } })
     const todos = useTodos()
+    await todos.loaded
 
     await expect(todos.exportProjectAiContext()).resolves.toEqual({
       status: 'error',
@@ -612,18 +854,18 @@ describe('useTodos', () => {
 
   it('opens an exported project AI context file through the preload bridge', async () => {
     const todos = useTodos()
+    await todos.loaded
 
     await expect(todos.openExportedAiContext('G:/repo/.localtodo/AI_CONTEXT.md')).resolves.toEqual({
       status: 'opened'
     })
-    expect(window.api.openExportedAiContextFile).toHaveBeenCalledWith(
-      'G:/repo/.localtodo/AI_CONTEXT.md'
-    )
+    expect(window.api.openExportedAiContextFile).toHaveBeenCalledWith('G:/repo/.localtodo/AI_CONTEXT.md')
   })
 
   it('returns an error when opening exported AI context is unavailable', async () => {
     vi.stubGlobal('window', { api: { platform: 'win32' } })
     const todos = useTodos()
+    await todos.loaded
 
     await expect(todos.openExportedAiContext('AI_CONTEXT.md')).resolves.toEqual({
       status: 'error',
@@ -633,6 +875,7 @@ describe('useTodos', () => {
 
   it('reveals an exported project AI context file through the preload bridge', async () => {
     const todos = useTodos()
+    await todos.loaded
 
     await expect(todos.revealExportedAiContext('G:/repo/.localtodo/AI_CONTEXT.md')).resolves.toEqual({
       status: 'revealed'
@@ -645,6 +888,7 @@ describe('useTodos', () => {
   it('returns an error when revealing exported AI context is unavailable', async () => {
     vi.stubGlobal('window', { api: { platform: 'win32' } })
     const todos = useTodos()
+    await todos.loaded
 
     await expect(todos.revealExportedAiContext('AI_CONTEXT.md')).resolves.toEqual({
       status: 'error',
@@ -652,8 +896,9 @@ describe('useTodos', () => {
     })
   })
 
-  it('exports tasks as schema versioned JSON', () => {
+  it('exports tasks as schema versioned JSON', async () => {
     const todos = useTodos()
+    await todos.loaded
 
     todos.draftTitle.value = 'Export me'
     todos.addTodo()
@@ -670,6 +915,7 @@ describe('useTodos', () => {
 
   it('imports tasks from schema versioned JSON', async () => {
     const todos = useTodos()
+    await todos.loaded
     todos.selectTodo('stale-selection')
     const file = {
       text: vi.fn().mockResolvedValue(
@@ -722,6 +968,7 @@ describe('useTodos', () => {
 
   it('exports .localtodo workspace for a project group', async () => {
     const todos = useTodos()
+    await todos.loaded
 
     todos.draftTitle.value = 'LocalTodo workspace task'
     todos.addTodo()
@@ -750,6 +997,7 @@ describe('useTodos', () => {
 
   it('returns an error when exporting .localtodo for a project without a repo path', async () => {
     const todos = useTodos()
+    await todos.loaded
 
     todos.draftTitle.value = 'No repo task'
     todos.addTodo()
@@ -767,6 +1015,7 @@ describe('useTodos', () => {
   it('returns an error when .localtodo project export is unavailable', async () => {
     vi.stubGlobal('window', { api: { platform: 'win32' } })
     const todos = useTodos()
+    await todos.loaded
 
     todos.draftTitle.value = 'Missing bridge task'
     todos.addTodo()

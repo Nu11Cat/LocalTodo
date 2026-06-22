@@ -3,9 +3,11 @@ import type {
   ExportLocalTodoProjectResult,
   ExportProjectAiContextPayload,
   ExportProjectAiContextResult,
+  LoadDataResult,
   OpenExportedAiContextResult,
   Platform,
-  RevealExportedAiContextResult
+  RevealExportedAiContextResult,
+  SaveDataResult
 } from '../../preload/index.d'
 
 declare global {
@@ -18,6 +20,8 @@ declare global {
       openExportedAiContextFile: (filePath: string) => Promise<OpenExportedAiContextResult>
       revealExportedAiContextFile: (filePath: string) => Promise<RevealExportedAiContextResult>
       exportLocalTodoProject: (payload: ExportLocalTodoProjectPayload) => Promise<ExportLocalTodoProjectResult>
+      loadData: () => Promise<LoadDataResult>
+      saveData: (payload: string) => Promise<SaveDataResult>
     }
   }
 }

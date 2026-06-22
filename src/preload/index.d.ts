@@ -14,6 +14,13 @@ export type ExportProjectAiContextResult =
 export type OpenExportedAiContextResult = { status: 'opened' } | { status: 'error'; message: string }
 export type RevealExportedAiContextResult = { status: 'revealed' } | { status: 'error'; message: string }
 
+export type LoadDataResult =
+  | { status: 'ok'; data: string }
+  | { status: 'missing' }
+  | { status: 'error'; message: string }
+
+export type SaveDataResult = { status: 'saved' } | { status: 'error'; message: string }
+
 export interface ExportLocalTodoProjectPayload {
   repoPath: string
   markdown: string
@@ -34,6 +41,8 @@ declare global {
       openExportedAiContextFile: (filePath: string) => Promise<OpenExportedAiContextResult>
       revealExportedAiContextFile: (filePath: string) => Promise<RevealExportedAiContextResult>
       exportLocalTodoProject: (payload: ExportLocalTodoProjectPayload) => Promise<ExportLocalTodoProjectResult>
+      loadData: () => Promise<LoadDataResult>
+      saveData: (payload: string) => Promise<SaveDataResult>
     }
   }
 }

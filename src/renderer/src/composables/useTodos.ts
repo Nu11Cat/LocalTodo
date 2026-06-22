@@ -1,4 +1,4 @@
-import { computed, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import {
   generateProjectAiContext,
   generateTaskAiContext,
@@ -28,6 +28,7 @@ import { migrateStoredTasks } from '@renderer/domain/taskMigration'
 
 const storageKey = 'localtodo.todos'
 const projectContextFileName = 'AI_CONTEXT.md'
+const saveDebounceMs = 300
 
 type ExportProjectAiContextResult =
   | { status: 'written'; filePath: string }
@@ -40,6 +41,9 @@ type ExportLocalTodoProjectResult =
 
 type OpenExportedAiContextResult = { status: 'opened' } | { status: 'error'; message: string }
 type RevealExportedAiContextResult = { status: 'revealed' } | { status: 'error'; message: string }
+type LoadTodosResult =
+  | { status: 'loaded'; tasks: Task[] }
+  | { status: 'error'; message: string; tasks: Task[] }
 
 type EditableTaskPatch = Partial<{
   status: TaskStatus
@@ -72,7 +76,7 @@ function createProjectContextExportPath(tasks: Task[]): string | undefined {
   return `${uniqueRepoPaths[0]}/.localtodo/${projectContextFileName}`
 }
 
-function loadTodos(): Task[] {
+function loadLegacyTodos(): Task[] {
   const rawTodos = localStorage.getItem(storageKey)
 
   if (!rawTodos) {
@@ -86,11 +90,130 @@ function loadTodos(): Task[] {
   }
 }
 
+function removeLegacyTodos(): void {
+  try {
+    localStorage.removeItem(storageKey)
+  } catch {
+    // Ignore localStorage removal errors.
+  }
+}
+
+async function loadTodos(): Promise<LoadTodosResult> {
+  if (!window.api?.loadData) {
+    return { status: 'loaded', tasks: loadLegacyTodos() }
+  }
+
+  const result = await window.api.loadData()
+
+  if (result.status === 'ok') {
+    const tasks = parseDataFileText(result.data)
+
+    if (tasks === null) {
+      return {
+        status: 'error',
+        message: 'Saved data could not be read. Your existing data file was left unchanged.',
+        tasks: []
+      }
+    }
+
+    return { status: 'loaded', tasks }
+  }
+
+  if (result.status === 'error') {
+    return { status: 'error', message: result.message, tasks: loadLegacyTodos() }
+  }
+
+  const legacyTodos = loadLegacyTodos()
+
+  if (legacyTodos.length > 0 && window.api?.saveData) {
+    const saveResult = await window.api.saveData(serializeDataFile(legacyTodos))
+
+    if (saveResult.status === 'saved') {
+      removeLegacyTodos()
+    } else {
+      console.warn('Failed to migrate legacy todos:', saveResult.message)
+    }
+  }
+
+  return { status: 'loaded', tasks: legacyTodos }
+}
+
+function debounceSave(callback: () => void, delayMs: number): () => void {
+  let timeoutId: ReturnType<typeof setTimeout> | null = null
+
+  return () => {
+    if (timeoutId !== null) {
+      clearTimeout(timeoutId)
+    }
+
+    timeoutId = setTimeout(() => {
+      timeoutId = null
+      callback()
+    }, delayMs)
+  }
+}
+
 export function useTodos() {
-  const todos = ref<Task[]>(loadTodos())
+  const todos = ref<Task[]>([])
   const draftTitle = ref('')
   const selectedTodoId = ref<string | null>(null)
   const filterState = ref<TaskFilterState>(createEmptyTaskFilterState())
+  const isLoaded = ref(false)
+  const loadErrorMessage = ref('')
+  let shouldPersist = false
+  let saveQueue = Promise.resolve()
+
+  async function saveTodos(): Promise<void> {
+    if (!shouldPersist) {
+      return
+    }
+
+    if (!window.api?.saveData) {
+      try {
+        localStorage.setItem(storageKey, JSON.stringify(todos.value))
+      } catch {
+        // Ignore localStorage fallback save errors.
+      }
+      return
+    }
+
+    const saveData = window.api.saveData
+    const payload = serializeDataFile(todos.value)
+
+    saveQueue = saveQueue.then(async () => {
+      try {
+        const result = await saveData(payload)
+
+        if (result.status === 'error') {
+          console.warn('Failed to save todos:', result.message)
+        }
+      } catch (error) {
+        console.warn('Failed to save todos:', error)
+      }
+    })
+
+    await saveQueue
+  }
+
+  const scheduleSaveTodos = debounceSave(() => {
+    void saveTodos()
+  }, saveDebounceMs)
+
+  const loaded = (async () => {
+    const result = await loadTodos()
+
+    todos.value = result.tasks
+    isLoaded.value = true
+
+    if (result.status === 'error') {
+      loadErrorMessage.value = result.message
+      shouldPersist = false
+      return
+    }
+
+    await nextTick()
+    shouldPersist = true
+  })()
 
   const filteredTodos = computed(() => filterTasks(todos.value, filterState.value))
   const activeTodos = computed(() => filteredTodos.value.filter(isTaskActive))
@@ -127,6 +250,10 @@ export function useTodos() {
   })
 
   function addTodo(): void {
+    if (!isLoaded.value) {
+      return
+    }
+
     const title = draftTitle.value.trim()
 
     if (!title) {
@@ -360,12 +487,18 @@ export function useTodos() {
   }
 
   async function importTodosJson(file: File): Promise<boolean> {
+    if (!isLoaded.value) {
+      return false
+    }
+
     const importedTodos = parseDataFileText(await file.text())
 
     if (importedTodos === null) {
       return false
     }
 
+    shouldPersist = true
+    loadErrorMessage.value = ''
     todos.value = importedTodos
     selectTodo(null)
     return true
@@ -385,10 +518,10 @@ export function useTodos() {
 
   watch(
     todos,
-    (nextTodos) => {
-      localStorage.setItem(storageKey, JSON.stringify(nextTodos))
+    () => {
+      scheduleSaveTodos()
     },
-    { deep: true, immediate: true }
+    { deep: true }
   )
 
   return {
@@ -396,6 +529,8 @@ export function useTodos() {
     draftTitle,
     selectedTodoId,
     filterState,
+    isLoaded,
+    loadErrorMessage,
     filteredTodos,
     activeTodos,
     completedTodos,
@@ -408,6 +543,7 @@ export function useTodos() {
     selectedProjectLabel,
     availableTags,
     selectedTodo,
+    loaded,
     addTodo,
     toggleTodo,
     selectTodo,

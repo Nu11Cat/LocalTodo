@@ -4,8 +4,10 @@ import type {
   ExportLocalTodoProjectResult,
   ExportProjectAiContextPayload,
   ExportProjectAiContextResult,
+  LoadDataResult,
   OpenExportedAiContextResult,
-  RevealExportedAiContextResult
+  RevealExportedAiContextResult,
+  SaveDataResult
 } from './index.d'
 
 const api = {
@@ -19,7 +21,10 @@ const api = {
     ipcRenderer.invoke('aiContext:revealExportedFile', filePath),
   exportLocalTodoProject: (
     payload: ExportLocalTodoProjectPayload
-  ): Promise<ExportLocalTodoProjectResult> => ipcRenderer.invoke('localtodo:exportProject', payload)
+  ): Promise<ExportLocalTodoProjectResult> => ipcRenderer.invoke('localtodo:exportProject', payload),
+  loadData: (): Promise<LoadDataResult> => ipcRenderer.invoke('storage:loadData'),
+  saveData: (payload: string): Promise<SaveDataResult> =>
+    ipcRenderer.invoke('storage:saveData', payload)
 }
 
 if (process.contextIsolated) {

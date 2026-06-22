@@ -14,6 +14,8 @@ const {
   draftTitle,
   selectedTodoId,
   filterState,
+  isLoaded,
+  loadErrorMessage,
   activeTodos,
   completedTodos,
   totalActiveCount,
@@ -189,9 +191,13 @@ async function revealLastDir(): Promise<void> {
           type="text"
           autocomplete="off"
           placeholder="What needs to be done?"
+          :disabled="!isLoaded"
         />
-        <button type="submit">Add</button>
+        <button type="submit" :disabled="!isLoaded">Add</button>
       </form>
+
+      <p v-if="!isLoaded" class="empty-state">Loading saved tasks...</p>
+      <p v-else-if="loadErrorMessage" class="empty-state">{{ loadErrorMessage }}</p>
 
       <div class="data-actions">
         <button
@@ -210,8 +216,12 @@ async function revealLastDir(): Promise<void> {
         >
           Export project context
         </button>
-        <button type="button" class="ghost-button" @click="downloadTodosJson">Export JSON</button>
-        <button type="button" class="ghost-button" @click="openImportDialog">Import JSON</button>
+        <button type="button" class="ghost-button" :disabled="!isLoaded" @click="downloadTodosJson">
+          Export JSON
+        </button>
+        <button type="button" class="ghost-button" :disabled="!isLoaded" @click="openImportDialog">
+          Import JSON
+        </button>
         <input
           ref="fileInput"
           class="sr-only"

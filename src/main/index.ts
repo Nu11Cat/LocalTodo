@@ -1,5 +1,5 @@
 import { basename, dirname, isAbsolute, join, normalize } from 'node:path'
-import { mkdir, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, rename, stat, writeFile } from 'node:fs/promises'
 import { app, BrowserWindow, dialog, ipcMain, shell, type WebContents } from 'electron'
 import { is } from '@electron-toolkit/utils'
 
@@ -17,6 +17,18 @@ type ExportProjectAiContextResult =
 type OpenExportedAiContextResult = { status: 'opened' } | { status: 'error'; message: string }
 type RevealExportedAiContextResult = { status: 'revealed' } | { status: 'error'; message: string }
 
+type LoadDataResult =
+  | { status: 'ok'; data: string }
+  | { status: 'missing' }
+  | { status: 'error'; message: string }
+
+type SaveDataResult = { status: 'saved' } | { status: 'error'; message: string }
+
+type SaveDataJob = {
+  payload: string
+  resolve: (value: SaveDataResult) => void
+}
+
 type ExportLocalTodoProjectPayload = {
   repoPath?: unknown
   markdown?: unknown
@@ -31,6 +43,8 @@ const exportProjectAiContextChannel = 'aiContext:exportProject'
 const openExportedAiContextChannel = 'aiContext:openExportedFile'
 const revealExportedAiContextChannel = 'aiContext:revealExportedFile'
 const exportLocalTodoProjectChannel = 'localtodo:exportProject'
+const loadDataChannel = 'storage:loadData'
+const saveDataChannel = 'storage:saveData'
 const exportedPathsByWebContents = new WeakMap<WebContents, Set<string>>()
 
 function sanitizeFileName(value: unknown): string {
@@ -201,6 +215,127 @@ function registerLocalTodoProjectExportHandler(): void {
   )
 }
 
+const dataFileName = 'data.json'
+const dataFileTempName = 'data.json.tmp'
+const maxDataFileBytes = 5 * 1024 * 1024
+let saveDataQueue: SaveDataJob[] = []
+let isSavingData = false
+
+function resolveDataFilePaths(): { dataDir: string; dataFilePath: string; tempFilePath: string } {
+  const dataDir = app.getPath('userData')
+
+  return {
+    dataDir,
+    dataFilePath: join(dataDir, dataFileName),
+    tempFilePath: join(dataDir, dataFileTempName)
+  }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
+}
+
+function isValidDataFileText(payload: string): boolean {
+  try {
+    const data = JSON.parse(payload)
+
+    return (
+      isRecord(data) &&
+      data.schemaVersion === 1 &&
+      typeof data.exportedAt === 'string' &&
+      Array.isArray(data.tasks)
+    )
+  } catch {
+    return false
+  }
+}
+
+async function writeDataFile(payload: string): Promise<SaveDataResult> {
+  if (Buffer.byteLength(payload, 'utf8') > maxDataFileBytes) {
+    return { status: 'error', message: 'Save payload is too large.' }
+  }
+
+  if (!isValidDataFileText(payload)) {
+    return { status: 'error', message: 'Save payload is not a valid LocalTodo data file.' }
+  }
+
+  const { dataDir, dataFilePath, tempFilePath } = resolveDataFilePaths()
+
+  try {
+    await mkdir(dataDir, { recursive: true })
+    await writeFile(tempFilePath, payload, 'utf8')
+    await rename(tempFilePath, dataFilePath)
+
+    return { status: 'saved' }
+  } catch (error) {
+    return {
+      status: 'error',
+      message: error instanceof Error ? error.message : 'Failed to save data.'
+    }
+  }
+}
+
+function processSaveDataQueue(): void {
+  if (isSavingData) {
+    return
+  }
+
+  const job = saveDataQueue.shift()
+
+  if (!job) {
+    return
+  }
+
+  isSavingData = true
+  void writeDataFile(job.payload).then((result) => {
+    job.resolve(result)
+    isSavingData = false
+    processSaveDataQueue()
+  })
+}
+
+function enqueueSaveData(payload: string): Promise<SaveDataResult> {
+  return new Promise((resolve) => {
+    saveDataQueue.push({ payload, resolve })
+    processSaveDataQueue()
+  })
+}
+
+function registerStorageHandlers(): void {
+  ipcMain.handle(loadDataChannel, async (): Promise<LoadDataResult> => {
+    const { dataFilePath } = resolveDataFilePaths()
+
+    try {
+      const fileStats = await stat(dataFilePath)
+
+      if (fileStats.size > maxDataFileBytes) {
+        return { status: 'error', message: 'Saved data file is too large.' }
+      }
+
+      const data = await readFile(dataFilePath, 'utf8')
+
+      return { status: 'ok', data }
+    } catch (error) {
+      if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
+        return { status: 'missing' }
+      }
+
+      return {
+        status: 'error',
+        message: error instanceof Error ? error.message : 'Failed to load data.'
+      }
+    }
+  })
+
+  ipcMain.handle(saveDataChannel, async (_event, payload: unknown): Promise<SaveDataResult> => {
+    if (typeof payload !== 'string') {
+      return { status: 'error', message: 'Save payload must be a string.' }
+    }
+
+    return enqueueSaveData(payload)
+  })
+}
+
 function createWindow(): void {
   const mainWindow = new BrowserWindow({
     width: 1000,
@@ -235,6 +370,7 @@ function createWindow(): void {
 
 app.whenReady().then(() => {
   app.setAppUserModelId('com.nu11cat.localtodo')
+  registerStorageHandlers()
   registerAiContextExportHandler()
   registerExportedFileActionHandlers()
   registerLocalTodoProjectExportHandler()

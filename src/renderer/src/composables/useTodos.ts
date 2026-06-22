@@ -35,9 +35,26 @@ type ExportProjectAiContextResult =
   | { status: 'cancelled' }
   | { status: 'error'; message: string }
 
+type LocalTodoGitignoreResult =
+  | { status: 'not-requested'; filePath: string; entries: string[] }
+  | { status: 'already-configured'; filePath: string; entries: string[] }
+  | { status: 'updated'; filePath: string; entries: string[] }
+  | { status: 'error'; filePath: string; entries: string[]; message: string }
+
 type ExportLocalTodoProjectResult =
-  | { status: 'written'; dirPath: string; aiContextFilePath: string; tasksJsonFilePath: string }
+  | {
+      status: 'written'
+      dirPath: string
+      aiContextFilePath: string
+      tasksJsonFilePath: string
+      taskFilePaths: string[]
+      gitignore: LocalTodoGitignoreResult
+    }
   | { status: 'error'; message: string }
+
+type ExportLocalTodoProjectOptions = {
+  writeGitignore?: boolean
+}
 
 type OpenExportedAiContextResult = { status: 'opened' } | { status: 'error'; message: string }
 type RevealExportedAiContextResult = { status: 'revealed' } | { status: 'error'; message: string }
@@ -432,7 +449,10 @@ export function useTodos() {
     })
   }
 
-  async function exportLocalTodoProject(key: string): Promise<ExportLocalTodoProjectResult> {
+  async function exportLocalTodoProject(
+    key: string,
+    options: ExportLocalTodoProjectOptions = {}
+  ): Promise<ExportLocalTodoProjectResult> {
     if (!window.api?.exportLocalTodoProject) {
       return { status: 'error', message: '.localtodo project export is not available.' }
     }
@@ -452,7 +472,12 @@ export function useTodos() {
     return window.api.exportLocalTodoProject({
       repoPath,
       markdown: generateProjectAiContext(summary.tasks),
-      tasksJson: serializeDataFile(summary.tasks)
+      tasksJson: serializeDataFile(summary.tasks),
+      taskMarkdownFiles: summary.tasks.map((task) => ({
+        id: task.id,
+        markdown: generateTaskAiContext(task)
+      })),
+      writeGitignore: options.writeGitignore
     })
   }
 

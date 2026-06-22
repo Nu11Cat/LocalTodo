@@ -111,16 +111,40 @@ async function exportProjectGroupContext(key: string): Promise<void> {
   await handleProjectContextExport(() => exportProjectGroupAiContext(key))
 }
 
+function formatGitignoreExportMessage(result: Awaited<ReturnType<typeof exportLocalTodoProject>>): string {
+  if (result.status !== 'written') {
+    return ''
+  }
+
+  if (result.gitignore.status === 'updated') {
+    return ' Updated .gitignore with LocalTodo generated-file entries.'
+  }
+
+  if (result.gitignore.status === 'already-configured') {
+    return ' Recommended .gitignore entries are already present.'
+  }
+
+  if (result.gitignore.status === 'error') {
+    return ` Export succeeded, but .gitignore was not updated: ${result.gitignore.message}`
+  }
+
+  return ` Reminder: add ${result.gitignore.entries.join(', ')} to .gitignore if these should stay local.`
+}
+
 async function exportProjectLocalTodo(key: string): Promise<void> {
+  const writeGitignore = window.confirm(
+    'LocalTodo exports generated task files into this repository. Add recommended .gitignore entries so they stay local? Choose Cancel to export without changing .gitignore.'
+  )
+
   projectContextExportMessage.value = 'Exporting .localtodo workspace...'
   lastExportedFilePath.value = null
   lastExportedAiContextFilePath.value = null
 
-  const result = await exportLocalTodoProject(key)
+  const result = await exportLocalTodoProject(key, { writeGitignore })
 
   if (result.status === 'written') {
     lastExportedAiContextFilePath.value = result.aiContextFilePath
-    projectContextExportMessage.value = `Saved .localtodo workspace to ${result.dirPath}`
+    projectContextExportMessage.value = `Saved .localtodo workspace to ${result.dirPath} (${result.taskFilePaths.length} task files).${formatGitignoreExportMessage(result)}`
     return
   }
 

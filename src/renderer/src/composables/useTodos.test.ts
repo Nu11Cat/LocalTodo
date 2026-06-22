@@ -20,7 +20,13 @@ function createMockApi() {
       status: 'written',
       dirPath: 'G:/repo/.localtodo',
       aiContextFilePath: 'G:/repo/.localtodo/AI_CONTEXT.md',
-      tasksJsonFilePath: 'G:/repo/.localtodo/tasks.json'
+      tasksJsonFilePath: 'G:/repo/.localtodo/tasks.json',
+      taskFilePaths: ['G:/repo/.localtodo/tasks/task_task-id.md'],
+      gitignore: {
+        status: 'not-requested',
+        filePath: 'G:/repo/.gitignore',
+        entries: ['.localtodo/tasks.json', '.localtodo/AI_CONTEXT.md', '.localtodo/tasks/']
+      }
     }),
     loadData: vi.fn().mockImplementation((): Promise<{ status: 'ok'; data: string } | { status: 'missing' }> => {
       if (fileStorage.has('data.json')) {
@@ -986,13 +992,49 @@ describe('useTodos', () => {
       status: 'written',
       dirPath: 'G:/repo/.localtodo',
       aiContextFilePath: 'G:/repo/.localtodo/AI_CONTEXT.md',
-      tasksJsonFilePath: 'G:/repo/.localtodo/tasks.json'
+      tasksJsonFilePath: 'G:/repo/.localtodo/tasks.json',
+      taskFilePaths: ['G:/repo/.localtodo/tasks/task_task-id.md'],
+      gitignore: {
+        status: 'not-requested',
+        filePath: 'G:/repo/.gitignore',
+        entries: ['.localtodo/tasks.json', '.localtodo/AI_CONTEXT.md', '.localtodo/tasks/']
+      }
     })
     expect(window.api.exportLocalTodoProject).toHaveBeenCalledWith({
       repoPath: 'G:/Zhao/nu11cat/LocalTodo',
       markdown: expect.stringContaining('## LocalTodo workspace task'),
-      tasksJson: expect.stringContaining('"title": "LocalTodo workspace task"')
+      tasksJson: expect.stringContaining('"title": "LocalTodo workspace task"'),
+      taskMarkdownFiles: [
+        {
+          id: todos.todos.value[1].id,
+          markdown: expect.stringContaining('# Task Context')
+        }
+      ],
+      writeGitignore: undefined
     })
+
+    const payload = vi.mocked(window.api.exportLocalTodoProject).mock.calls[0][0]
+
+    expect(payload.taskMarkdownFiles[0].markdown).toContain('LocalTodo workspace task')
+    expect(payload.taskMarkdownFiles[0].markdown).not.toContain('Foreign workspace task')
+  })
+
+  it('passes the .gitignore write option to .localtodo project export', async () => {
+    const todos = useTodos()
+    await todos.loaded
+
+    todos.draftTitle.value = 'Gitignore workspace task'
+    todos.addTodo()
+    todos.updateTodo(todos.todos.value[0].id, {
+      projectName: 'LocalTodo',
+      repoPath: 'G:/Zhao/nu11cat/LocalTodo'
+    })
+
+    await todos.exportLocalTodoProject('LocalTodo\nG:/Zhao/nu11cat/LocalTodo', { writeGitignore: true })
+
+    expect(window.api.exportLocalTodoProject).toHaveBeenCalledWith(
+      expect.objectContaining({ writeGitignore: true })
+    )
   })
 
   it('returns an error when exporting .localtodo for a project without a repo path', async () => {

@@ -21,14 +21,34 @@ export type LoadDataResult =
 
 export type SaveDataResult = { status: 'saved' } | { status: 'error'; message: string }
 
+export interface LocalTodoTaskMarkdownFile {
+  id: string
+  markdown: string
+}
+
+export type LocalTodoGitignoreResult =
+  | { status: 'not-requested'; filePath: string; entries: string[] }
+  | { status: 'already-configured'; filePath: string; entries: string[] }
+  | { status: 'updated'; filePath: string; entries: string[] }
+  | { status: 'error'; filePath: string; entries: string[]; message: string }
+
 export interface ExportLocalTodoProjectPayload {
   repoPath: string
   markdown: string
   tasksJson: string
+  taskMarkdownFiles: LocalTodoTaskMarkdownFile[]
+  writeGitignore?: boolean
 }
 
 export type ExportLocalTodoProjectResult =
-  | { status: 'written'; dirPath: string; aiContextFilePath: string; tasksJsonFilePath: string }
+  | {
+      status: 'written'
+      dirPath: string
+      aiContextFilePath: string
+      tasksJsonFilePath: string
+      taskFilePaths: string[]
+      gitignore: LocalTodoGitignoreResult
+    }
   | { status: 'error'; message: string }
 
 declare global {

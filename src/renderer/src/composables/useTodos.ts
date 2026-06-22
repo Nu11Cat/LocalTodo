@@ -1,5 +1,6 @@
 import { computed, nextTick, ref, watch } from 'vue'
 import {
+  filterSensitiveTasks,
   generateProjectAiContext,
   generateTaskAiContext,
   generateTasksAiContext
@@ -31,9 +32,9 @@ const projectContextFileName = 'AI_CONTEXT.md'
 const saveDebounceMs = 300
 
 type ExportProjectAiContextResult =
-  | { status: 'written'; filePath: string }
-  | { status: 'cancelled' }
-  | { status: 'error'; message: string }
+  | { status: 'written'; filePath: string; excludedSensitiveCount: number }
+  | { status: 'cancelled'; excludedSensitiveCount: number }
+  | { status: 'error'; message: string; excludedSensitiveCount: number }
 
 type LocalTodoGitignoreResult =
   | { status: 'not-requested'; filePath: string; entries: string[] }
@@ -49,11 +50,21 @@ type ExportLocalTodoProjectResult =
       tasksJsonFilePath: string
       taskFilePaths: string[]
       gitignore: LocalTodoGitignoreResult
+      excludedSensitiveCount: number
     }
-  | { status: 'error'; message: string }
+  | { status: 'error'; message: string; excludedSensitiveCount: number }
 
-type ExportLocalTodoProjectOptions = {
+type SensitiveTaskActionOptions = {
+  includeSensitive?: boolean
+}
+
+type ExportLocalTodoProjectOptions = SensitiveTaskActionOptions & {
   writeGitignore?: boolean
+}
+
+type CopyAiContextResult = {
+  status: 'copied' | 'not-found' | 'sensitive-blocked'
+  excludedSensitiveCount: number
 }
 
 type OpenExportedAiContextResult = { status: 'opened' } | { status: 'error'; message: string }
@@ -72,6 +83,7 @@ type EditableTaskPatch = Partial<{
   repoPath: string | null
   relatedFiles: string[]
   commands: string[]
+  sensitive: boolean
 }>
 
 type TaskFilterKey = 'statuses' | 'priorities' | 'types' | 'tags'
@@ -387,66 +399,103 @@ export function useTodos() {
     filterState.value = createEmptyTaskFilterState()
   }
 
-  async function copyTaskAiContext(id: string): Promise<boolean> {
+  async function copyTaskAiContext(
+    id: string,
+    options: SensitiveTaskActionOptions = {}
+  ): Promise<CopyAiContextResult> {
     const todo = todos.value.find((item) => item.id === id)
 
     if (!todo) {
-      return false
+      return { status: 'not-found', excludedSensitiveCount: 0 }
+    }
+
+    if (todo.sensitive && options.includeSensitive !== true) {
+      return { status: 'sensitive-blocked', excludedSensitiveCount: 1 }
     }
 
     await navigator.clipboard.writeText(generateTaskAiContext(todo))
-    return true
+    return { status: 'copied', excludedSensitiveCount: 0 }
   }
 
-  async function copyActiveAiContext(): Promise<boolean> {
-    await navigator.clipboard.writeText(generateTasksAiContext(activeTodos.value))
-    return true
+  async function copyActiveAiContext(
+    options: SensitiveTaskActionOptions = {}
+  ): Promise<CopyAiContextResult> {
+    const result = generateTasksAiContext(activeTodos.value, options)
+
+    await navigator.clipboard.writeText(result.markdown)
+    return { status: 'copied', excludedSensitiveCount: result.excludedSensitiveCount }
   }
 
-  async function copyProjectAiContext(): Promise<boolean> {
-    await navigator.clipboard.writeText(generateProjectAiContext(todos.value))
-    return true
+  async function copyProjectAiContext(
+    options: SensitiveTaskActionOptions = {}
+  ): Promise<CopyAiContextResult> {
+    const result = generateProjectAiContext(todos.value, options)
+
+    await navigator.clipboard.writeText(result.markdown)
+    return { status: 'copied', excludedSensitiveCount: result.excludedSensitiveCount }
   }
 
-  async function copyProjectGroupAiContext(key: string): Promise<boolean> {
+  async function copyProjectGroupAiContext(
+    key: string,
+    options: SensitiveTaskActionOptions = {}
+  ): Promise<CopyAiContextResult> {
     const summary = findProjectSummary(projectSummaries.value, key)
 
     if (!summary) {
-      return false
+      return { status: 'not-found', excludedSensitiveCount: 0 }
     }
 
-    await navigator.clipboard.writeText(generateProjectAiContext(summary.tasks))
-    return true
+    const result = generateProjectAiContext(summary.tasks, options)
+
+    await navigator.clipboard.writeText(result.markdown)
+    return { status: 'copied', excludedSensitiveCount: result.excludedSensitiveCount }
   }
 
-  async function exportProjectAiContext(): Promise<ExportProjectAiContextResult> {
+  async function exportProjectAiContext(
+    options: SensitiveTaskActionOptions = {}
+  ): Promise<ExportProjectAiContextResult> {
+    const context = generateProjectAiContext(todos.value, options)
+
     if (!window.api?.exportProjectAiContext) {
-      return { status: 'error', message: 'Project AI context export is not available.' }
+      return {
+        status: 'error',
+        message: 'Project AI context export is not available.',
+        excludedSensitiveCount: context.excludedSensitiveCount
+      }
     }
 
-    return window.api.exportProjectAiContext({
-      markdown: generateProjectAiContext(todos.value),
+    const result = await window.api.exportProjectAiContext({
+      markdown: context.markdown,
       suggestedFileName: projectContextFileName,
-      suggestedPath: createProjectContextExportPath(todos.value)
+      suggestedPath: createProjectContextExportPath(filterSensitiveTasks(todos.value, options).tasks)
     })
+
+    return { ...result, excludedSensitiveCount: context.excludedSensitiveCount }
   }
 
-  async function exportProjectGroupAiContext(key: string): Promise<ExportProjectAiContextResult> {
+  async function exportProjectGroupAiContext(
+    key: string,
+    options: SensitiveTaskActionOptions = {}
+  ): Promise<ExportProjectAiContextResult> {
     if (!window.api?.exportProjectAiContext) {
-      return { status: 'error', message: 'Project AI context export is not available.' }
+      return { status: 'error', message: 'Project AI context export is not available.', excludedSensitiveCount: 0 }
     }
 
     const summary = findProjectSummary(projectSummaries.value, key)
 
     if (!summary) {
-      return { status: 'error', message: 'Project was not found.' }
+      return { status: 'error', message: 'Project was not found.', excludedSensitiveCount: 0 }
     }
 
-    return window.api.exportProjectAiContext({
-      markdown: generateProjectAiContext(summary.tasks),
+    const filtered = filterSensitiveTasks(summary.tasks, options)
+    const context = generateProjectAiContext(summary.tasks, options)
+    const result = await window.api.exportProjectAiContext({
+      markdown: context.markdown,
       suggestedFileName: projectContextFileName,
-      suggestedPath: createProjectContextExportPath(summary.tasks)
+      suggestedPath: createProjectContextExportPath(filtered.tasks)
     })
+
+    return { ...result, excludedSensitiveCount: context.excludedSensitiveCount }
   }
 
   async function exportLocalTodoProject(
@@ -454,31 +503,35 @@ export function useTodos() {
     options: ExportLocalTodoProjectOptions = {}
   ): Promise<ExportLocalTodoProjectResult> {
     if (!window.api?.exportLocalTodoProject) {
-      return { status: 'error', message: '.localtodo project export is not available.' }
+      return { status: 'error', message: '.localtodo project export is not available.', excludedSensitiveCount: 0 }
     }
 
     const summary = findProjectSummary(projectSummaries.value, key)
 
     if (!summary) {
-      return { status: 'error', message: 'Project was not found.' }
+      return { status: 'error', message: 'Project was not found.', excludedSensitiveCount: 0 }
     }
 
     const repoPath = summary.repoPath
 
     if (!repoPath) {
-      return { status: 'error', message: 'Project does not have a repository path.' }
+      return { status: 'error', message: 'Project does not have a repository path.', excludedSensitiveCount: 0 }
     }
 
-    return window.api.exportLocalTodoProject({
+    const filtered = filterSensitiveTasks(summary.tasks, options)
+    const context = generateProjectAiContext(summary.tasks, options)
+    const result = await window.api.exportLocalTodoProject({
       repoPath,
-      markdown: generateProjectAiContext(summary.tasks),
-      tasksJson: serializeDataFile(summary.tasks),
-      taskMarkdownFiles: summary.tasks.map((task) => ({
+      markdown: context.markdown,
+      tasksJson: serializeDataFile(filtered.tasks),
+      taskMarkdownFiles: filtered.tasks.map((task) => ({
         id: task.id,
         markdown: generateTaskAiContext(task)
       })),
       writeGitignore: options.writeGitignore
     })
+
+    return { ...result, excludedSensitiveCount: context.excludedSensitiveCount }
   }
 
   async function openExportedAiContext(filePath: string): Promise<OpenExportedAiContextResult> {

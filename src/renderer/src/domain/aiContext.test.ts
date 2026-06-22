@@ -13,7 +13,8 @@ const baseTask: Task = {
   relatedFiles: [],
   commands: [],
   createdAt: '2026-06-16T01:00:00.000Z',
-  updatedAt: '2026-06-16T02:00:00.000Z'
+  updatedAt: '2026-06-16T02:00:00.000Z',
+  sensitive: false
 }
 
 describe('aiContext', () => {
@@ -105,24 +106,31 @@ Generate copyable Markdown for AI assistants.
       }
     ])
 
-    expect(context).toContain('# Tasks Context')
-    expect(context).toContain('## Add AI context')
-    expect(context).toContain('- Status: todo')
-    expect(context).toContain('## Review task')
-    expect(context).toContain('- Status: review')
-    expect(context).toContain('- Priority: high')
-    expect(context).toContain('- Project: LocalTodo')
-    expect(context).toContain('- Repository: G:/Zhao/nu11cat/LocalTodo')
-    expect(context).toContain('- Related files: 2')
-    expect(context).toContain('- Commands: 1')
+    expect(context.excludedSensitiveCount).toBe(0)
+    expect(context.markdown).toContain('# Tasks Context')
+    expect(context.markdown).toContain('## Add AI context')
+    expect(context.markdown).toContain('- Status: todo')
+    expect(context.markdown).toContain('## Review task')
+    expect(context.markdown).toContain('- Status: review')
+    expect(context.markdown).toContain('- Priority: high')
+    expect(context.markdown).toContain('- Project: LocalTodo')
+    expect(context.markdown).toContain('- Repository: G:/Zhao/nu11cat/LocalTodo')
+    expect(context.markdown).toContain('- Related files: 2')
+    expect(context.markdown).toContain('- Commands: 1')
   })
 
   it('generates empty-state Markdown for an empty task list', () => {
-    expect(generateTasksAiContext([])).toBe('# Tasks Context\n\nNo tasks.\n')
+    expect(generateTasksAiContext([])).toEqual({
+      markdown: '# Tasks Context\n\nNo tasks.\n',
+      excludedSensitiveCount: 0
+    })
   })
 
   it('generates empty-state Markdown for an empty project context', () => {
-    expect(generateProjectAiContext([])).toBe('# Project Context\n\nNo tasks.\n')
+    expect(generateProjectAiContext([])).toEqual({
+      markdown: '# Project Context\n\nNo tasks.\n',
+      excludedSensitiveCount: 0
+    })
   })
 
   it('generates project-level Markdown grouped by project and status', () => {
@@ -158,22 +166,63 @@ Generate copyable Markdown for AI assistants.
       }
     ])
 
-    expect(context).toContain('<!-- LocalTodo project AI context -->')
-    expect(context).toContain('<!-- Generated: 2026-06-16T03:00:00.000Z -->')
-    expect(context).toContain('<!-- Tasks: 3 | Projects: 2 | Active: 2 | Done: 1 -->')
-    expect(context).toContain('## LocalTodo')
-    expect(context).toContain('- Repository: G:/Zhao/nu11cat/LocalTodo')
-    expect(context).toContain('### Doing\n\n## Implement filters')
-    expect(context).toContain('### Blocked\n\nNone')
-    expect(context).toContain('### Review\n\n## Review context')
-    expect(context).toContain('- `npm test`')
-    expect(context).toContain('- `npm run typecheck`')
-    expect(context).toContain('- src/renderer/src/App.vue')
-    expect(context).toContain('- src/renderer/src/domain/aiContext.ts')
-    expect(context).toContain('## (No project)')
-    expect(context).toContain('- Repository: —')
-    expect(context).toContain('### Done\n\n## Unscoped chore')
+    expect(context.excludedSensitiveCount).toBe(0)
+    expect(context.markdown).toContain('<!-- LocalTodo project AI context -->')
+    expect(context.markdown).toContain('<!-- Generated: 2026-06-16T03:00:00.000Z -->')
+    expect(context.markdown).toContain('<!-- Tasks: 3 | Projects: 2 | Active: 2 | Done: 1 -->')
+    expect(context.markdown).toContain('## LocalTodo')
+    expect(context.markdown).toContain('- Repository: G:/Zhao/nu11cat/LocalTodo')
+    expect(context.markdown).toContain('### Doing\n\n## Implement filters')
+    expect(context.markdown).toContain('### Blocked\n\nNone')
+    expect(context.markdown).toContain('### Review\n\n## Review context')
+    expect(context.markdown).toContain('- `npm test`')
+    expect(context.markdown).toContain('- `npm run typecheck`')
+    expect(context.markdown).toContain('- src/renderer/src/App.vue')
+    expect(context.markdown).toContain('- src/renderer/src/domain/aiContext.ts')
+    expect(context.markdown).toContain('## (No project)')
+    expect(context.markdown).toContain('- Repository: —')
+    expect(context.markdown).toContain('### Done\n\n## Unscoped chore')
 
     vi.useRealTimers()
+  })
+
+  it('excludes sensitive tasks from bulk context by default', () => {
+    const context = generateTasksAiContext([
+      baseTask,
+      {
+        ...baseTask,
+        id: 'task-2',
+        title: 'Sensitive launch plan',
+        description: 'Do not export this description.',
+        relatedFiles: ['secret/file.ts'],
+        commands: ['print-secret'],
+        sensitive: true
+      }
+    ])
+
+    expect(context.excludedSensitiveCount).toBe(1)
+    expect(context.markdown).toContain('## Add AI context')
+    expect(context.markdown).not.toContain('Sensitive launch plan')
+    expect(context.markdown).not.toContain('secret/file.ts')
+    expect(context.markdown).not.toContain('print-secret')
+  })
+
+  it('can include sensitive tasks when explicitly requested', () => {
+    const context = generateProjectAiContext(
+      [
+        baseTask,
+        {
+          ...baseTask,
+          id: 'task-2',
+          title: 'Sensitive project task',
+          sensitive: true
+        }
+      ],
+      { includeSensitive: true }
+    )
+
+    expect(context.excludedSensitiveCount).toBe(0)
+    expect(context.markdown).toContain('## Sensitive project task')
+    expect(context.markdown).not.toContain('Excluded sensitive tasks')
   })
 })

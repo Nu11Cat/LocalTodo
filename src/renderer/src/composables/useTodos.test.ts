@@ -26,7 +26,8 @@ function createMockApi() {
         status: 'not-requested',
         filePath: 'G:/repo/.gitignore',
         entries: ['.localtodo/tasks.json', '.localtodo/AI_CONTEXT.md', '.localtodo/tasks/']
-      }
+      },
+      excludedSensitiveCount: 0
     }),
     loadData: vi.fn().mockImplementation((): Promise<{ status: 'ok'; data: string } | { status: 'missing' }> => {
       if (fileStorage.has('data.json')) {
@@ -90,7 +91,8 @@ describe('useTodos', () => {
       tags: [],
       description: '',
       relatedFiles: [],
-      commands: []
+      commands: [],
+      sensitive: false
     })
     expect(todos.draftTitle.value).toBe('')
   })
@@ -206,6 +208,7 @@ describe('useTodos', () => {
         repoPath: 'G:/Zhao/nu11cat/LocalTodo',
         relatedFiles: ['src/renderer/src/App.vue'],
         commands: ['npm test'],
+        sensitive: false,
         createdAt: '2026-06-16T01:00:00.000Z',
         updatedAt: '2026-06-16T02:00:00.000Z'
       }
@@ -245,6 +248,7 @@ describe('useTodos', () => {
         description: '',
         relatedFiles: [],
         commands: [],
+        sensitive: false,
         createdAt: '2026-06-16T01:00:00.000Z',
         updatedAt: '2026-06-16T01:00:00.000Z'
       },
@@ -258,6 +262,7 @@ describe('useTodos', () => {
         description: '',
         relatedFiles: [],
         commands: [],
+        sensitive: false,
         createdAt: '2026-06-16T02:00:00.000Z',
         updatedAt: '2026-06-16T02:00:00.000Z'
       }
@@ -383,8 +388,13 @@ describe('useTodos', () => {
       projectName: 'LocalTodo',
       repoPath: 'G:/Zhao/nu11cat/LocalTodo',
       relatedFiles: ['src/renderer/src/App.vue'],
-      commands: ['npm test']
+      commands: ['npm test'],
+      sensitive: false
     })
+
+    todos.updateTodo(taskId, { sensitive: true })
+
+    expect(todos.selectedTodo.value?.sensitive).toBe(true)
   })
 
   it('clears optional project metadata with null patches', async () => {
@@ -657,9 +667,30 @@ describe('useTodos', () => {
 
     const result = await todos.copyTaskAiContext(todos.todos.value[0].id)
 
-    expect(result).toBe(true)
+    expect(result).toEqual({ status: 'copied', excludedSensitiveCount: 0 })
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
       expect.stringContaining('## Task\n\nExplain this task')
+    )
+  })
+
+  it('blocks direct sensitive task context copy unless explicitly included', async () => {
+    const todos = useTodos()
+    await todos.loaded
+
+    todos.draftTitle.value = 'Sensitive direct task'
+    todos.addTodo()
+    todos.updateTodo(todos.todos.value[0].id, { sensitive: true })
+
+    const blockedResult = await todos.copyTaskAiContext(todos.todos.value[0].id)
+
+    expect(blockedResult).toEqual({ status: 'sensitive-blocked', excludedSensitiveCount: 1 })
+    expect(navigator.clipboard.writeText).not.toHaveBeenCalled()
+
+    const copiedResult = await todos.copyTaskAiContext(todos.todos.value[0].id, { includeSensitive: true })
+
+    expect(copiedResult).toEqual({ status: 'copied', excludedSensitiveCount: 0 })
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
+      expect.stringContaining('## Task\n\nSensitive direct task')
     )
   })
 
@@ -669,7 +700,7 @@ describe('useTodos', () => {
 
     const result = await todos.copyTaskAiContext('missing-task')
 
-    expect(result).toBe(false)
+    expect(result).toEqual({ status: 'not-found', excludedSensitiveCount: 0 })
     expect(navigator.clipboard.writeText).not.toHaveBeenCalled()
   })
 
@@ -685,7 +716,7 @@ describe('useTodos', () => {
 
     const result = await todos.copyActiveAiContext()
 
-    expect(result).toBe(true)
+    expect(result).toEqual({ status: 'copied', excludedSensitiveCount: 0 })
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith(expect.stringContaining('## Active task'))
     expect(navigator.clipboard.writeText).not.toHaveBeenCalledWith(
       expect.stringContaining('## Completed task')
@@ -753,7 +784,7 @@ describe('useTodos', () => {
 
     const result = await todos.copyProjectGroupAiContext('LocalTodo\n')
 
-    expect(result).toBe(true)
+    expect(result).toEqual({ status: 'copied', excludedSensitiveCount: 0 })
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith(expect.stringContaining('## LocalTodo'))
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
       expect.stringContaining('## LocalTodo context task')
@@ -779,7 +810,7 @@ describe('useTodos', () => {
 
     const result = await todos.exportProjectGroupAiContext('LocalTodo\nG:/Zhao/nu11cat/LocalTodo')
 
-    expect(result).toEqual({ status: 'written', filePath: 'AI_CONTEXT.md' })
+    expect(result).toEqual({ status: 'written', filePath: 'AI_CONTEXT.md', excludedSensitiveCount: 0 })
     expect(window.api.exportProjectAiContext).toHaveBeenCalledWith({
       markdown: expect.stringContaining('## Scoped export task'),
       suggestedFileName: 'AI_CONTEXT.md',
@@ -806,12 +837,39 @@ describe('useTodos', () => {
 
     const result = await todos.copyProjectAiContext()
 
-    expect(result).toBe(true)
+    expect(result).toEqual({ status: 'copied', excludedSensitiveCount: 0 })
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith(expect.stringContaining('# Project Context'))
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith(expect.stringContaining('## LocalTodo'))
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith(expect.stringContaining('## OtherProject'))
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
       expect.stringContaining('## Filtered out task')
+    )
+  })
+
+  it('excludes sensitive tasks from project-level AI context by default', async () => {
+    const todos = useTodos()
+    await todos.loaded
+
+    todos.draftTitle.value = 'Visible context task'
+    todos.addTodo()
+    todos.draftTitle.value = 'Sensitive context task'
+    todos.addTodo()
+    todos.updateTodo(todos.todos.value[0].id, {
+      description: 'Sensitive context details',
+      relatedFiles: ['secret-context.ts'],
+      commands: ['secret-context-command'],
+      sensitive: true
+    })
+
+    const result = await todos.copyProjectAiContext()
+
+    expect(result).toEqual({ status: 'copied', excludedSensitiveCount: 1 })
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(expect.stringContaining('Visible context task'))
+    expect(navigator.clipboard.writeText).not.toHaveBeenCalledWith(
+      expect.stringContaining('Sensitive context task')
+    )
+    expect(navigator.clipboard.writeText).not.toHaveBeenCalledWith(
+      expect.stringContaining('secret-context-command')
     )
   })
 
@@ -828,7 +886,7 @@ describe('useTodos', () => {
 
     const result = await todos.exportProjectAiContext()
 
-    expect(result).toEqual({ status: 'written', filePath: 'AI_CONTEXT.md' })
+    expect(result).toEqual({ status: 'written', filePath: 'AI_CONTEXT.md', excludedSensitiveCount: 0 })
     expect(window.api.exportProjectAiContext).toHaveBeenCalledWith({
       markdown: expect.stringContaining('# Project Context'),
       suggestedFileName: 'AI_CONTEXT.md',
@@ -844,7 +902,10 @@ describe('useTodos', () => {
     todos.draftTitle.value = 'Cancel export'
     todos.addTodo()
 
-    await expect(todos.exportProjectAiContext()).resolves.toEqual({ status: 'cancelled' })
+    await expect(todos.exportProjectAiContext()).resolves.toEqual({
+      status: 'cancelled',
+      excludedSensitiveCount: 0
+    })
   })
 
   it('returns an error when project context export is unavailable', async () => {
@@ -854,7 +915,8 @@ describe('useTodos', () => {
 
     await expect(todos.exportProjectAiContext()).resolves.toEqual({
       status: 'error',
-      message: 'Project AI context export is not available.'
+      message: 'Project AI context export is not available.',
+      excludedSensitiveCount: 0
     })
   })
 
@@ -965,6 +1027,7 @@ describe('useTodos', () => {
         repoPath: 'G:/Zhao/nu11cat/LocalTodo',
         relatedFiles: ['src/renderer/src/App.vue'],
         commands: ['npm test'],
+        sensitive: false,
         createdAt: '2026-06-16T01:00:00.000Z',
         updatedAt: '2026-06-16T02:00:00.000Z'
       }
@@ -998,7 +1061,8 @@ describe('useTodos', () => {
         status: 'not-requested',
         filePath: 'G:/repo/.gitignore',
         entries: ['.localtodo/tasks.json', '.localtodo/AI_CONTEXT.md', '.localtodo/tasks/']
-      }
+      },
+      excludedSensitiveCount: 0
     })
     expect(window.api.exportLocalTodoProject).toHaveBeenCalledWith({
       repoPath: 'G:/Zhao/nu11cat/LocalTodo',
@@ -1017,6 +1081,68 @@ describe('useTodos', () => {
 
     expect(payload.taskMarkdownFiles[0].markdown).toContain('LocalTodo workspace task')
     expect(payload.taskMarkdownFiles[0].markdown).not.toContain('Foreign workspace task')
+  })
+
+  it('excludes sensitive tasks from .localtodo project export by default', async () => {
+    const todos = useTodos()
+    await todos.loaded
+
+    todos.draftTitle.value = 'Visible workspace task'
+    todos.addTodo()
+    todos.updateTodo(todos.todos.value[0].id, {
+      projectName: 'LocalTodo',
+      repoPath: 'G:/Zhao/nu11cat/LocalTodo'
+    })
+    todos.draftTitle.value = 'Sensitive workspace task'
+    todos.addTodo()
+    todos.updateTodo(todos.todos.value[0].id, {
+      projectName: 'LocalTodo',
+      repoPath: 'G:/Zhao/nu11cat/LocalTodo',
+      description: 'Secret workspace details',
+      relatedFiles: ['secret.ts'],
+      commands: ['secret-command'],
+      sensitive: true
+    })
+
+    const result = await todos.exportLocalTodoProject('LocalTodo\nG:/Zhao/nu11cat/LocalTodo')
+
+    expect(result).toEqual(expect.objectContaining({ status: 'written', excludedSensitiveCount: 1 }))
+
+    const payload = vi.mocked(window.api.exportLocalTodoProject).mock.calls[0][0]
+
+    expect(payload.markdown).toContain('Visible workspace task')
+    expect(payload.markdown).not.toContain('Sensitive workspace task')
+    expect(payload.markdown).not.toContain('Secret workspace details')
+    expect(payload.tasksJson).toContain('Visible workspace task')
+    expect(payload.tasksJson).not.toContain('Sensitive workspace task')
+    expect(payload.taskMarkdownFiles).toHaveLength(1)
+    expect(payload.taskMarkdownFiles[0].markdown).toContain('Visible workspace task')
+    expect(payload.taskMarkdownFiles[0].markdown).not.toContain('Sensitive workspace task')
+  })
+
+  it('includes sensitive tasks in .localtodo project export when requested', async () => {
+    const todos = useTodos()
+    await todos.loaded
+
+    todos.draftTitle.value = 'Sensitive included task'
+    todos.addTodo()
+    todos.updateTodo(todos.todos.value[0].id, {
+      projectName: 'LocalTodo',
+      repoPath: 'G:/Zhao/nu11cat/LocalTodo',
+      sensitive: true
+    })
+
+    const result = await todos.exportLocalTodoProject('LocalTodo\nG:/Zhao/nu11cat/LocalTodo', {
+      includeSensitive: true
+    })
+
+    expect(result).toEqual(expect.objectContaining({ status: 'written', excludedSensitiveCount: 0 }))
+
+    const payload = vi.mocked(window.api.exportLocalTodoProject).mock.calls[0][0]
+
+    expect(payload.markdown).toContain('Sensitive included task')
+    expect(payload.tasksJson).toContain('Sensitive included task')
+    expect(payload.taskMarkdownFiles[0].markdown).toContain('Sensitive included task')
   })
 
   it('passes the .gitignore write option to .localtodo project export', async () => {
@@ -1049,7 +1175,8 @@ describe('useTodos', () => {
 
     expect(result).toEqual({
       status: 'error',
-      message: 'Project does not have a repository path.'
+      message: 'Project does not have a repository path.',
+      excludedSensitiveCount: 0
     })
     expect(window.api.exportLocalTodoProject).not.toHaveBeenCalled()
   })
@@ -1068,7 +1195,8 @@ describe('useTodos', () => {
 
     await expect(todos.exportLocalTodoProject('LocalTodo\nG:/Zhao/nu11cat/LocalTodo')).resolves.toEqual({
       status: 'error',
-      message: '.localtodo project export is not available.'
+      message: '.localtodo project export is not available.',
+      excludedSensitiveCount: 0
     })
   })
 })

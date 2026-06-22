@@ -18,6 +18,7 @@ export interface Task {
   commands: string[]
   createdAt: string
   updatedAt: string
+  sensitive: boolean
 }
 
 export const taskStatuses: TaskStatus[] = ['inbox', 'todo', 'doing', 'blocked', 'review', 'done']
@@ -48,6 +49,7 @@ export interface CreateTaskInput {
   commands?: string[]
   createdAt?: string
   updatedAt?: string
+  sensitive?: boolean
 }
 
 export function createTask(input: CreateTaskInput): Task {
@@ -65,7 +67,8 @@ export function createTask(input: CreateTaskInput): Task {
     relatedFiles: sanitizeTaskStringList(input.relatedFiles),
     commands: sanitizeTaskStringList(input.commands),
     createdAt: input.createdAt ?? now,
-    updatedAt: input.updatedAt ?? input.createdAt ?? now
+    updatedAt: input.updatedAt ?? input.createdAt ?? now,
+    sensitive: input.sensitive === true
   }
 
   if (projectName) {

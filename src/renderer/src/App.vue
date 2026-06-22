@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import ProjectDashboard from './components/ProjectDashboard.vue'
 import TaskDetailPanel from './components/TaskDetailPanel.vue'
 import { useTodos } from './composables/useTodos'
@@ -11,6 +11,7 @@ const lastExportedFilePath = ref<string | null>(null)
 const lastExportedAiContextFilePath = ref<string | null>(null)
 
 const {
+  todos,
   draftTitle,
   selectedTodoId,
   filterState,
@@ -53,6 +54,8 @@ const {
   importTodosJson
 } = useTodos()
 
+const todosSensitiveCount = computed(() => todos.value.filter((todo) => todo.sensitive).length)
+
 function openImportDialog(): void {
   fileInput.value?.click()
 }
@@ -74,24 +77,101 @@ function updateSelectedTodo(patch: Parameters<typeof updateTodo>[1]): void {
   }
 }
 
-function copySelectedTodoContext(): void {
+function formatSensitiveExclusionMessage(count: number): string {
+  if (count <= 0) {
+    return ''
+  }
+
+  return ` Excluded ${count} sensitive task${count === 1 ? '' : 's'} by default.`
+}
+
+function confirmIncludeSensitiveTasks(count: number): boolean {
+  if (count <= 0) {
+    return false
+  }
+
+  return window.confirm(
+    `${count} sensitive task${count === 1 ? '' : 's'} would be excluded by default. Include sensitive tasks for this action?`
+  )
+}
+
+function countSensitiveTasks(key?: string): number {
+  if (key === undefined) {
+    return activeTodos.value.filter((todo) => todo.sensitive).length
+  }
+
+  const summary = projectSummaries.value.find((item) => item.key === key)
+
+  return summary?.tasks.filter((todo) => todo.sensitive).length ?? 0
+}
+
+async function copyTodoContext(id: string): Promise<void> {
+  const todo = todos.value.find((item) => item.id === id)
+
+  if (!todo) {
+    return
+  }
+
+  const includeSensitive = todo.sensitive
+    ? window.confirm('This task is marked sensitive. Copy its AI Context anyway?')
+    : false
+  const result = await copyTaskAiContext(todo.id, { includeSensitive })
+
+  if (result.status === 'copied') {
+    projectContextExportMessage.value = 'Copied task AI context.'
+    return
+  }
+
+  if (result.status === 'sensitive-blocked') {
+    projectContextExportMessage.value = 'Sensitive task context was not copied.'
+  }
+}
+
+async function copySelectedTodoContext(): Promise<void> {
   if (selectedTodo.value) {
-    void copyTaskAiContext(selectedTodo.value.id)
+    await copyTodoContext(selectedTodo.value.id)
+  }
+}
+
+async function copyActiveContext(): Promise<void> {
+  const result = await copyActiveAiContext()
+
+  if (result.status === 'copied') {
+    projectContextExportMessage.value = `Copied active AI context.${formatSensitiveExclusionMessage(result.excludedSensitiveCount)}`
+  }
+}
+
+async function copyProjectContext(): Promise<void> {
+  const result = await copyProjectAiContext()
+
+  if (result.status === 'copied') {
+    projectContextExportMessage.value = `Copied project AI context.${formatSensitiveExclusionMessage(result.excludedSensitiveCount)}`
+  }
+}
+
+async function copyProjectGroupContext(key: string): Promise<void> {
+  const result = await copyProjectGroupAiContext(key)
+
+  if (result.status === 'copied') {
+    projectContextExportMessage.value = `Copied project AI context.${formatSensitiveExclusionMessage(result.excludedSensitiveCount)}`
   }
 }
 
 async function handleProjectContextExport(
-  exporter: () => ReturnType<typeof exportProjectAiContext>
+  exporter: (options?: { includeSensitive?: boolean }) => ReturnType<typeof exportProjectAiContext>,
+  sensitiveCount = 0
 ): Promise<void> {
+  const includeSensitive = confirmIncludeSensitiveTasks(sensitiveCount)
+
   projectContextExportMessage.value = 'Exporting project context...'
   lastExportedFilePath.value = null
   lastExportedAiContextFilePath.value = null
 
-  const result = await exporter()
+  const result = await exporter({ includeSensitive })
 
   if (result.status === 'written') {
     lastExportedFilePath.value = result.filePath
-    projectContextExportMessage.value = `Saved to ${result.filePath}`
+    projectContextExportMessage.value = `Saved to ${result.filePath}.${formatSensitiveExclusionMessage(result.excludedSensitiveCount)}`
     return
   }
 
@@ -104,11 +184,11 @@ async function handleProjectContextExport(
 }
 
 async function exportProjectContext(): Promise<void> {
-  await handleProjectContextExport(exportProjectAiContext)
+  await handleProjectContextExport(exportProjectAiContext, todosSensitiveCount.value)
 }
 
 async function exportProjectGroupContext(key: string): Promise<void> {
-  await handleProjectContextExport(() => exportProjectGroupAiContext(key))
+  await handleProjectContextExport((options) => exportProjectGroupAiContext(key, options), countSensitiveTasks(key))
 }
 
 function formatGitignoreExportMessage(result: Awaited<ReturnType<typeof exportLocalTodoProject>>): string {
@@ -132,6 +212,7 @@ function formatGitignoreExportMessage(result: Awaited<ReturnType<typeof exportLo
 }
 
 async function exportProjectLocalTodo(key: string): Promise<void> {
+  const includeSensitive = confirmIncludeSensitiveTasks(countSensitiveTasks(key))
   const writeGitignore = window.confirm(
     'LocalTodo exports generated task files into this repository. Add recommended .gitignore entries so they stay local? Choose Cancel to export without changing .gitignore.'
   )
@@ -140,11 +221,11 @@ async function exportProjectLocalTodo(key: string): Promise<void> {
   lastExportedFilePath.value = null
   lastExportedAiContextFilePath.value = null
 
-  const result = await exportLocalTodoProject(key, { writeGitignore })
+  const result = await exportLocalTodoProject(key, { includeSensitive, writeGitignore })
 
   if (result.status === 'written') {
     lastExportedAiContextFilePath.value = result.aiContextFilePath
-    projectContextExportMessage.value = `Saved .localtodo workspace to ${result.dirPath} (${result.taskFilePaths.length} task files).${formatGitignoreExportMessage(result)}`
+    projectContextExportMessage.value = `Saved .localtodo workspace to ${result.dirPath} (${result.taskFilePaths.length} task files).${formatSensitiveExclusionMessage(result.excludedSensitiveCount)}${formatGitignoreExportMessage(result)}`
     return
   }
 
@@ -228,7 +309,7 @@ async function revealLastDir(): Promise<void> {
           v-if="totalActiveCount + totalCompletedCount > 0"
           type="button"
           class="ghost-button"
-          @click="copyProjectAiContext"
+          @click="copyProjectContext"
         >
           Copy project context
         </button>
@@ -272,7 +353,7 @@ async function revealLastDir(): Promise<void> {
       :summaries="projectSummaries"
       :selected-key="selectedProjectKey"
       @select="setProjectFilter"
-      @copy="copyProjectGroupAiContext"
+      @copy="copyProjectGroupContext"
       @export="exportProjectGroupContext"
       @export-local-todo="exportProjectLocalTodo"
     />
@@ -367,7 +448,7 @@ async function revealLastDir(): Promise<void> {
             v-if="activeTodos.length > 0"
             type="button"
             class="ghost-button"
-            @click="copyActiveAiContext"
+            @click="copyActiveContext"
           >
             Copy active context
           </button>
@@ -388,10 +469,11 @@ async function revealLastDir(): Promise<void> {
           <label>
             <input type="checkbox" :checked="todo.status === 'done'" @change="toggleTodo(todo.id)" />
             <span>{{ todo.title }}</span>
+            <span v-if="todo.sensitive" class="sensitive-badge">Sensitive</span>
           </label>
           <div class="todo-actions">
             <button type="button" class="ghost-button" @click="selectTodo(todo.id)">Edit</button>
-            <button type="button" class="ghost-button" @click="copyTaskAiContext(todo.id)">
+            <button type="button" class="ghost-button" @click="copyTodoContext(todo.id)">
               Copy AI Context
             </button>
             <button type="button" class="ghost-button" @click="removeTodo(todo.id)">Remove</button>
@@ -422,10 +504,11 @@ async function revealLastDir(): Promise<void> {
           <label>
             <input type="checkbox" :checked="todo.status === 'done'" @change="toggleTodo(todo.id)" />
             <span>{{ todo.title }}</span>
+            <span v-if="todo.sensitive" class="sensitive-badge">Sensitive</span>
           </label>
           <div class="todo-actions">
             <button type="button" class="ghost-button" @click="selectTodo(todo.id)">Edit</button>
-            <button type="button" class="ghost-button" @click="copyTaskAiContext(todo.id)">
+            <button type="button" class="ghost-button" @click="copyTodoContext(todo.id)">
               Copy AI Context
             </button>
             <button type="button" class="ghost-button" @click="removeTodo(todo.id)">Remove</button>

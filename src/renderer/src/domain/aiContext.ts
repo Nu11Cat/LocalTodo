@@ -6,6 +6,15 @@ interface ProjectTaskGroup {
   tasks: Task[]
 }
 
+export interface AiContextOptions {
+  includeSensitive?: boolean
+}
+
+export interface AiContextGenerationResult {
+  markdown: string
+  excludedSensitiveCount: number
+}
+
 function formatList(items: string[]): string {
   if (items.length === 0) {
     return 'None'
@@ -36,6 +45,22 @@ function dedupeItems(items: string[]): string[] {
   }
 
   return result
+}
+
+export function filterSensitiveTasks(
+  tasks: Task[],
+  options: AiContextOptions = {}
+): { tasks: Task[]; excludedSensitiveCount: number } {
+  if (options.includeSensitive === true) {
+    return { tasks, excludedSensitiveCount: 0 }
+  }
+
+  const visibleTasks = tasks.filter((task) => !task.sensitive)
+
+  return {
+    tasks: visibleTasks,
+    excludedSensitiveCount: tasks.length - visibleTasks.length
+  }
 }
 
 function formatTaskSummary(task: Task): string {
@@ -190,29 +215,53 @@ export function generateTaskAiContext(task: Task): string {
   return `${sections.join('\n')}\n`
 }
 
-export function generateTasksAiContext(tasks: Task[]): string {
-  if (tasks.length === 0) {
-    return '# Tasks Context\n\nNo tasks.\n'
+export function generateTasksAiContext(
+  tasks: Task[],
+  options: AiContextOptions = {}
+): AiContextGenerationResult {
+  const filtered = filterSensitiveTasks(tasks, options)
+
+  if (filtered.tasks.length === 0) {
+    return {
+      markdown: '# Tasks Context\n\nNo tasks.\n',
+      excludedSensitiveCount: filtered.excludedSensitiveCount
+    }
   }
 
-  return ['# Tasks Context', '', ...tasks.flatMap((task) => [formatTaskSummary(task), ''])].join('\n')
+  return {
+    markdown: ['# Tasks Context', '', ...filtered.tasks.flatMap((task) => [formatTaskSummary(task), ''])].join('\n'),
+    excludedSensitiveCount: filtered.excludedSensitiveCount
+  }
 }
 
-export function generateProjectAiContext(tasks: Task[]): string {
-  if (tasks.length === 0) {
-    return '# Project Context\n\nNo tasks.\n'
+export function generateProjectAiContext(
+  tasks: Task[],
+  options: AiContextOptions = {}
+): AiContextGenerationResult {
+  const filtered = filterSensitiveTasks(tasks, options)
+
+  if (filtered.tasks.length === 0) {
+    return {
+      markdown: '# Project Context\n\nNo tasks.\n',
+      excludedSensitiveCount: filtered.excludedSensitiveCount
+    }
   }
 
-  const groups = groupTasksByProject(tasks)
+  const groups = groupTasksByProject(filtered.tasks)
   const sections = [
     '<!-- LocalTodo project AI context -->',
     `<!-- Generated: ${new Date().toISOString()} -->`,
-    `<!-- Tasks: ${tasks.length} | Projects: ${groups.length} | Active: ${tasks.filter(isTaskActive).length} | Done: ${tasks.filter(isTaskDone).length} -->`,
-    '',
-    '# Project Context',
-    '',
-    ...groups.flatMap((group) => [...formatProjectGroup(group), ''])
+    `<!-- Tasks: ${filtered.tasks.length} | Projects: ${groups.length} | Active: ${filtered.tasks.filter(isTaskActive).length} | Done: ${filtered.tasks.filter(isTaskDone).length} -->`
   ]
 
-  return `${sections.join('\n').trimEnd()}\n`
+  if (filtered.excludedSensitiveCount > 0) {
+    sections.push(`<!-- Excluded sensitive tasks: ${filtered.excludedSensitiveCount} -->`)
+  }
+
+  sections.push('', '# Project Context', '', ...groups.flatMap((group) => [...formatProjectGroup(group), '']))
+
+  return {
+    markdown: `${sections.join('\n').trimEnd()}\n`,
+    excludedSensitiveCount: filtered.excludedSensitiveCount
+  }
 }

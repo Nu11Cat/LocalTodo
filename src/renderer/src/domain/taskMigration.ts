@@ -72,7 +72,8 @@ function normalizeTask(value: unknown): Task | null {
       ? value.commands.filter((command) => typeof command === 'string')
       : [],
     createdAt: value.createdAt,
-    updatedAt: typeof value.updatedAt === 'string' ? value.updatedAt : value.createdAt
+    updatedAt: typeof value.updatedAt === 'string' ? value.updatedAt : value.createdAt,
+    sensitive: typeof value.sensitive === 'boolean' ? value.sensitive : undefined
   })
 }
 

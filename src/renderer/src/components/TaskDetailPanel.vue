@@ -20,6 +20,7 @@ type TaskPatch = Partial<{
   repoPath: string | null
   relatedFiles: string[]
   commands: string[]
+  sensitive: boolean
 }>
 
 const props = defineProps<{
@@ -62,6 +63,10 @@ function updatePriority(event: Event): void {
 
 function updateType(event: Event): void {
   emit('update', { type: (event.target as HTMLSelectElement).value as TaskType })
+}
+
+function updateSensitive(event: Event): void {
+  emit('update', { sensitive: (event.target as HTMLInputElement).checked })
 }
 
 function saveProjectName(): void {
@@ -227,6 +232,16 @@ function saveDescriptionWithShortcut(event: KeyboardEvent): void {
           <select :value="task.type" @change="updateType">
             <option v-for="taskType in taskTypes" :key="taskType" :value="taskType">{{ taskType }}</option>
           </select>
+        </label>
+      </div>
+
+      <div class="detail-field">
+        <label class="checkbox-label">
+          <input type="checkbox" :checked="task.sensitive" @change="updateSensitive" />
+          <span>
+            Sensitive task
+            <small>Sensitive tasks are excluded from AI Context exports by default.</small>
+          </span>
         </label>
       </div>
 

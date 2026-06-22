@@ -14,10 +14,17 @@ describe('taskModel', () => {
       description: '',
       relatedFiles: [],
       commands: [],
+      sensitive: false,
       createdAt: '2026-06-16T01:00:00.000Z',
       updatedAt: '2026-06-16T01:00:00.000Z'
     })
     expect(task.id).toBeTruthy()
+  })
+
+  it('creates sensitive tasks when requested', () => {
+    const task = createTask({ title: 'Private plan', sensitive: true })
+
+    expect(task.sensitive).toBe(true)
   })
 
   it('trims and deduplicates project metadata', () => {

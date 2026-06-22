@@ -51,7 +51,8 @@ const {
   openExportedAiContext,
   revealExportedAiContext,
   downloadTodosJson,
-  importTodosJson
+  previewTodosJsonImport,
+  applyTodosJsonImport
 } = useTodos()
 
 const todosSensitiveCount = computed(() => todos.value.filter((todo) => todo.sensitive).length)
@@ -64,8 +65,37 @@ async function importSelectedFile(event: Event): Promise<void> {
   const input = event.target as HTMLInputElement
   const file = input.files?.[0]
 
-  if (file) {
-    await importTodosJson(file)
+  if (!file) {
+    input.value = ''
+    return
+  }
+
+  const preview = await previewTodosJsonImport(file)
+
+  if (preview.status !== 'ready') {
+    projectContextExportMessage.value = `Import failed: ${preview.message}`
+    input.value = ''
+    return
+  }
+
+  const confirmed = window.confirm(
+    `Import JSON will replace your current ${preview.currentTaskCount} task${preview.currentTaskCount === 1 ? '' : 's'} with ${preview.importTaskCount} task${preview.importTaskCount === 1 ? '' : 's'} from the selected file.\n\nLocalTodo will first create a restore point of your current tasks. Continue?`
+  )
+
+  if (!confirmed) {
+    projectContextExportMessage.value = 'Import cancelled.'
+    input.value = ''
+    return
+  }
+
+  projectContextExportMessage.value = 'Creating restore point and importing JSON...'
+
+  const result = await applyTodosJsonImport(preview.tasks)
+
+  if (result.status === 'imported') {
+    projectContextExportMessage.value = `Imported ${result.importedTaskCount} task${result.importedTaskCount === 1 ? '' : 's'}. Replaced ${result.previousTaskCount} task${result.previousTaskCount === 1 ? '' : 's'}. Restore point saved to ${result.restorePointPath}.`
+  } else {
+    projectContextExportMessage.value = `Import failed before overwrite: ${result.message}`
   }
 
   input.value = ''

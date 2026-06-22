@@ -1,4 +1,5 @@
 import type {
+  CreateImportRestorePointResult,
   ExportLocalTodoProjectPayload,
   ExportLocalTodoProjectResult,
   ExportProjectAiContextPayload,
@@ -22,6 +23,7 @@ declare global {
       exportLocalTodoProject: (payload: ExportLocalTodoProjectPayload) => Promise<ExportLocalTodoProjectResult>
       loadData: () => Promise<LoadDataResult>
       saveData: (payload: string) => Promise<SaveDataResult>
+      createImportRestorePoint: (payload: string) => Promise<CreateImportRestorePointResult>
     }
   }
 }

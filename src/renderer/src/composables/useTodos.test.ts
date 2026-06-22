@@ -39,6 +39,10 @@ function createMockApi() {
     saveData: vi.fn().mockImplementation((payload: string): Promise<{ status: 'saved' }> => {
       fileStorage.set('data.json', payload)
       return Promise.resolve({ status: 'saved' })
+    }),
+    createImportRestorePoint: vi.fn().mockResolvedValue({
+      status: 'written',
+      filePath: 'G:/LocalTodo/restore-points/localtodo-before-import.json'
     })
   }
 }
@@ -1011,9 +1015,20 @@ describe('useTodos', () => {
       )
     } as unknown as File
 
-    const result = await todos.importTodosJson(file)
+    const preview = await todos.previewTodosJsonImport(file)
 
-    expect(result).toBe(true)
+    expect(preview).toMatchObject({ status: 'ready', currentTaskCount: 0, importTaskCount: 1 })
+    expect(todos.todos.value).toEqual([])
+
+    const result = preview.status === 'ready' ? await todos.applyTodosJsonImport(preview.tasks) : null
+
+    expect(result).toEqual({
+      status: 'imported',
+      previousTaskCount: 0,
+      importedTaskCount: 1,
+      restorePointPath: 'G:/LocalTodo/restore-points/localtodo-before-import.json'
+    })
+    expect(window.api.createImportRestorePoint).toHaveBeenCalledWith(expect.stringContaining('"tasks": []'))
     expect(todos.todos.value).toEqual([
       {
         id: 'imported-task',
@@ -1033,6 +1048,112 @@ describe('useTodos', () => {
       }
     ])
     expect(todos.selectedTodoId.value).toBeNull()
+  })
+
+  it('creates a restore point from current tasks before replacing an import', async () => {
+    const todos = useTodos()
+    await todos.loaded
+
+    todos.draftTitle.value = 'Current task'
+    todos.addTodo()
+    todos.selectTodo(todos.todos.value[0].id)
+
+    const importedTask = {
+      ...todos.todos.value[0],
+      id: 'imported-task',
+      title: 'Imported task'
+    }
+    const result = await todos.applyTodosJsonImport([importedTask])
+
+    expect(result).toEqual({
+      status: 'imported',
+      previousTaskCount: 1,
+      importedTaskCount: 1,
+      restorePointPath: 'G:/LocalTodo/restore-points/localtodo-before-import.json'
+    })
+    expect(window.api.createImportRestorePoint).toHaveBeenCalledWith(expect.stringContaining('Current task'))
+    expect(window.api.createImportRestorePoint).toHaveBeenCalledWith(expect.not.stringContaining('Imported task'))
+    expect(todos.todos.value).toEqual([importedTask])
+    expect(todos.selectedTodoId.value).toBeNull()
+  })
+
+  it('does not overwrite current tasks when imported JSON is invalid', async () => {
+    const todos = useTodos()
+    await todos.loaded
+
+    todos.draftTitle.value = 'Keep this task'
+    todos.addTodo()
+    const file = { text: vi.fn().mockResolvedValue('{not-json') } as unknown as File
+
+    const result = await todos.previewTodosJsonImport(file)
+
+    expect(result).toEqual({
+      status: 'invalid',
+      message: 'Selected file is not a valid LocalTodo JSON export.'
+    })
+    expect(todos.todos.value[0].title).toBe('Keep this task')
+    expect(window.api.createImportRestorePoint).not.toHaveBeenCalled()
+  })
+
+  it('does not overwrite current tasks when reading the import file fails', async () => {
+    const todos = useTodos()
+    await todos.loaded
+
+    todos.draftTitle.value = 'Keep this task'
+    todos.addTodo()
+    const file = { text: vi.fn().mockRejectedValue(new Error('Read failed')) } as unknown as File
+
+    const result = await todos.previewTodosJsonImport(file)
+
+    expect(result).toEqual({ status: 'invalid', message: 'Read failed' })
+    expect(todos.todos.value[0].title).toBe('Keep this task')
+    expect(window.api.createImportRestorePoint).not.toHaveBeenCalled()
+  })
+
+  it('does not overwrite current tasks when restore point creation fails', async () => {
+    vi.mocked(window.api.createImportRestorePoint).mockResolvedValue({ status: 'error', message: 'Disk full' })
+    const todos = useTodos()
+    await todos.loaded
+
+    todos.draftTitle.value = 'Keep this task'
+    todos.addTodo()
+    const importedTask = {
+      ...todos.todos.value[0],
+      id: 'imported-task',
+      title: 'Imported task'
+    }
+
+    const result = await todos.applyTodosJsonImport([importedTask])
+
+    expect(result).toEqual({ status: 'restore-error', message: 'Disk full' })
+    expect(todos.todos.value[0].title).toBe('Keep this task')
+  })
+
+  it('does not overwrite current tasks when restore point creation is unavailable', async () => {
+    vi.stubGlobal('window', {
+      api: {
+        ...createMockApi(),
+        createImportRestorePoint: undefined
+      }
+    })
+    const todos = useTodos()
+    await todos.loaded
+
+    todos.draftTitle.value = 'Keep this task'
+    todos.addTodo()
+    const importedTask = {
+      ...todos.todos.value[0],
+      id: 'imported-task',
+      title: 'Imported task'
+    }
+
+    const result = await todos.applyTodosJsonImport([importedTask])
+
+    expect(result).toEqual({
+      status: 'restore-error',
+      message: 'Import restore point creation is not available.'
+    })
+    expect(todos.todos.value[0].title).toBe('Keep this task')
   })
 
   it('exports .localtodo workspace for a project group', async () => {

@@ -21,6 +21,10 @@ export type LoadDataResult =
 
 export type SaveDataResult = { status: 'saved' } | { status: 'error'; message: string }
 
+export type CreateImportRestorePointResult =
+  | { status: 'written'; filePath: string }
+  | { status: 'error'; message: string }
+
 export interface LocalTodoTaskMarkdownFile {
   id: string
   markdown: string
@@ -63,6 +67,7 @@ declare global {
       exportLocalTodoProject: (payload: ExportLocalTodoProjectPayload) => Promise<ExportLocalTodoProjectResult>
       loadData: () => Promise<LoadDataResult>
       saveData: (payload: string) => Promise<SaveDataResult>
+      createImportRestorePoint: (payload: string) => Promise<CreateImportRestorePointResult>
     }
   }
 }

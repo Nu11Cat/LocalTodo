@@ -67,6 +67,16 @@ type CopyAiContextResult = {
   excludedSensitiveCount: number
 }
 
+type ImportTodosJsonPreviewResult =
+  | { status: 'ready'; tasks: Task[]; currentTaskCount: number; importTaskCount: number }
+  | { status: 'not-loaded'; message: string }
+  | { status: 'invalid'; message: string }
+
+type ImportTodosJsonApplyResult =
+  | { status: 'imported'; previousTaskCount: number; importedTaskCount: number; restorePointPath: string }
+  | { status: 'not-loaded'; message: string }
+  | { status: 'restore-error'; message: string }
+
 type OpenExportedAiContextResult = { status: 'opened' } | { status: 'error'; message: string }
 type RevealExportedAiContextResult = { status: 'revealed' } | { status: 'error'; message: string }
 type LoadTodosResult =
@@ -564,22 +574,59 @@ export function useTodos() {
     URL.revokeObjectURL(url)
   }
 
-  async function importTodosJson(file: File): Promise<boolean> {
+  async function previewTodosJsonImport(file: File): Promise<ImportTodosJsonPreviewResult> {
     if (!isLoaded.value) {
-      return false
+      return { status: 'not-loaded', message: 'Saved data is still loading.' }
     }
 
-    const importedTodos = parseDataFileText(await file.text())
+    try {
+      const importedTodos = parseDataFileText(await file.text())
 
-    if (importedTodos === null) {
-      return false
+      if (importedTodos === null) {
+        return { status: 'invalid', message: 'Selected file is not a valid LocalTodo JSON export.' }
+      }
+
+      return {
+        status: 'ready',
+        tasks: importedTodos,
+        currentTaskCount: todos.value.length,
+        importTaskCount: importedTodos.length
+      }
+    } catch (error) {
+      return {
+        status: 'invalid',
+        message: error instanceof Error ? error.message : 'Failed to read selected JSON file.'
+      }
+    }
+  }
+
+  async function applyTodosJsonImport(importedTodos: Task[]): Promise<ImportTodosJsonApplyResult> {
+    if (!isLoaded.value) {
+      return { status: 'not-loaded', message: 'Saved data is still loading.' }
+    }
+
+    if (!window.api?.createImportRestorePoint) {
+      return { status: 'restore-error', message: 'Import restore point creation is not available.' }
+    }
+
+    const previousTaskCount = todos.value.length
+    const restorePoint = await window.api.createImportRestorePoint(serializeDataFile(todos.value))
+
+    if (restorePoint.status === 'error') {
+      return { status: 'restore-error', message: restorePoint.message }
     }
 
     shouldPersist = true
     loadErrorMessage.value = ''
     todos.value = importedTodos
     selectTodo(null)
-    return true
+
+    return {
+      status: 'imported',
+      previousTaskCount,
+      importedTaskCount: importedTodos.length,
+      restorePointPath: restorePoint.filePath
+    }
   }
 
   watch(
@@ -646,6 +693,7 @@ export function useTodos() {
     revealExportedAiContext,
     exportTodosJson,
     downloadTodosJson,
-    importTodosJson
+    previewTodosJsonImport,
+    applyTodosJsonImport
   }
 }

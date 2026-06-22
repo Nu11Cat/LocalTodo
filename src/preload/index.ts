@@ -4,6 +4,7 @@ import type {
   ExportLocalTodoProjectResult,
   ExportProjectAiContextPayload,
   ExportProjectAiContextResult,
+  CreateImportRestorePointResult,
   LoadDataResult,
   OpenExportedAiContextResult,
   RevealExportedAiContextResult,
@@ -24,7 +25,9 @@ const api = {
   ): Promise<ExportLocalTodoProjectResult> => ipcRenderer.invoke('localtodo:exportProject', payload),
   loadData: (): Promise<LoadDataResult> => ipcRenderer.invoke('storage:loadData'),
   saveData: (payload: string): Promise<SaveDataResult> =>
-    ipcRenderer.invoke('storage:saveData', payload)
+    ipcRenderer.invoke('storage:saveData', payload),
+  createImportRestorePoint: (payload: string): Promise<CreateImportRestorePointResult> =>
+    ipcRenderer.invoke('storage:createImportRestorePoint', payload)
 }
 
 if (process.contextIsolated) {

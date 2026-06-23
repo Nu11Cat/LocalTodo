@@ -41,6 +41,7 @@ const {
   selectedProjectLabel,
   availableTags,
   selectedTodo,
+  dataFileInfo,
   addTodo,
   toggleTodo,
   selectTodo,
@@ -69,12 +70,46 @@ const {
   cleanupStaleLocalTodoTaskFiles,
   openExportedAiContext,
   revealExportedAiContext,
+  revealDataFile,
+  openDataFile,
   downloadTodosJson,
   previewTodosJsonImport,
   applyTodosJsonImport
 } = useTodos()
 
 const todosSensitiveCount = computed(() => todos.value.filter((todo) => todo.sensitive).length)
+
+function formatBytes(size: number): string {
+  if (size < 1024) {
+    return `${size} B`
+  }
+
+  if (size < 1024 * 1024) {
+    return `${(size / 1024).toFixed(1)} KB`
+  }
+
+  return `${(size / (1024 * 1024)).toFixed(1)} MB`
+}
+
+function formatDataFileTimestamp(ms: number): string {
+  return new Date(ms).toLocaleString()
+}
+
+async function revealDataFileLocation(): Promise<void> {
+  const result = await revealDataFile()
+
+  if (result.status === 'error') {
+    projectContextExportMessage.value = `Show in folder failed: ${result.message}`
+  }
+}
+
+async function openDataFileLocation(): Promise<void> {
+  const result = await openDataFile()
+
+  if (result.status === 'error') {
+    projectContextExportMessage.value = `Open data file failed: ${result.message}`
+  }
+}
 
 function openImportDialog(): void {
   fileInput.value?.click()
@@ -440,6 +475,24 @@ async function revealLastDir(): Promise<void> {
           accept="application/json,.json"
           @change="importSelectedFile"
         />
+      </div>
+      <div v-if="dataFileInfo" class="data-file-info">
+        <div class="data-file-info-text">
+          <span class="data-file-path">{{ dataFileInfo.filePath }}</span>
+          <span v-if="dataFileInfo.exists" class="data-file-meta">
+            {{ formatBytes(dataFileInfo.size ?? 0) }} ·
+            Last saved {{ formatDataFileTimestamp(dataFileInfo.modifiedAtMs ?? 0) }}
+          </span>
+          <span v-else class="data-file-meta">
+            No data file yet — it will be created on your first change.
+          </span>
+        </div>
+        <div v-if="dataFileInfo.exists" class="post-export-actions">
+          <button type="button" class="ghost-button" @click="revealDataFileLocation">
+            Show in folder
+          </button>
+          <button type="button" class="ghost-button" @click="openDataFileLocation">Open file</button>
+        </div>
       </div>
       <div v-if="projectContextExportMessage" class="action-message">
         <span>{{ projectContextExportMessage }}</span>

@@ -6,9 +6,12 @@ import type {
   ExportLocalTodoProjectResult,
   ExportProjectAiContextPayload,
   ExportProjectAiContextResult,
+  GetDataFileInfoResult,
   LoadDataResult,
+  OpenDataFileResult,
   OpenExportedAiContextResult,
   Platform,
+  RevealDataFileResult,
   RevealExportedAiContextResult,
   SaveDataResult,
   SelectDirectoryResult
@@ -29,6 +32,9 @@ declare global {
       ) => Promise<CleanupLocalTodoTaskFilesResult>
       loadData: () => Promise<LoadDataResult>
       saveData: (payload: string) => Promise<SaveDataResult>
+      getDataFileInfo: () => Promise<GetDataFileInfoResult>
+      revealDataFile: () => Promise<RevealDataFileResult>
+      openDataFile: () => Promise<OpenDataFileResult>
       createImportRestorePoint: (payload: string) => Promise<CreateImportRestorePointResult>
       selectDirectory: () => Promise<SelectDirectoryResult>
     }

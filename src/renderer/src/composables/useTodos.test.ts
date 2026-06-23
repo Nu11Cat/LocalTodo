@@ -44,6 +44,25 @@ function createMockApi() {
       fileStorage.set('data.json', payload)
       return Promise.resolve({ status: 'saved' })
     }),
+    getDataFileInfo: vi.fn().mockImplementation(() => {
+      if (fileStorage.has('data.json')) {
+        return Promise.resolve({
+          status: 'ok' as const,
+          filePath: 'G:/LocalTodo/data.json',
+          exists: true as const,
+          size: Buffer.byteLength(fileStorage.get('data.json')!, 'utf8'),
+          modifiedAtMs: 1_700_000_000_000
+        })
+      }
+
+      return Promise.resolve({
+        status: 'ok' as const,
+        filePath: 'G:/LocalTodo/data.json',
+        exists: false as const
+      })
+    }),
+    revealDataFile: vi.fn().mockResolvedValue({ status: 'revealed' }),
+    openDataFile: vi.fn().mockResolvedValue({ status: 'opened' }),
     createImportRestorePoint: vi.fn().mockResolvedValue({
       status: 'written',
       filePath: 'G:/LocalTodo/restore-points/localtodo-before-import.json'
@@ -1511,6 +1530,141 @@ describe('useTodos', () => {
       status: 'error',
       message: '.localtodo project export is not available.',
       excludedSensitiveCount: 0
+    })
+  })
+})
+
+describe('useTodos data file info', () => {
+  it('maps an existing data file into dataFileInfo after load', async () => {
+    fileStorage.set(
+      'data.json',
+      JSON.stringify({ schemaVersion: 1, exportedAt: '2026-06-16T00:00:00.000Z', tasks: [] })
+    )
+
+    const todos = useTodos()
+    await todos.loaded
+
+    expect(window.api.getDataFileInfo).toHaveBeenCalled()
+    expect(todos.dataFileInfo.value).toEqual({
+      filePath: 'G:/LocalTodo/data.json',
+      exists: true,
+      size: expect.any(Number),
+      modifiedAtMs: 1_700_000_000_000
+    })
+  })
+
+  it('reports a not-yet-created data file with null size and timestamp', async () => {
+    const todos = useTodos()
+    await todos.loaded
+
+    expect(todos.dataFileInfo.value).toEqual({
+      filePath: 'G:/LocalTodo/data.json',
+      exists: false,
+      size: null,
+      modifiedAtMs: null
+    })
+  })
+
+  it('clears dataFileInfo when the info lookup errors', async () => {
+    vi.mocked(window.api.getDataFileInfo).mockResolvedValue({
+      status: 'error',
+      message: 'boom'
+    })
+
+    const todos = useTodos()
+    await todos.loaded
+
+    expect(todos.dataFileInfo.value).toBeNull()
+  })
+
+  it('leaves dataFileInfo null when the bridge lacks getDataFileInfo', async () => {
+    vi.stubGlobal('window', { api: { platform: 'win32' } })
+
+    const todos = useTodos()
+    await todos.loaded
+    await todos.refreshDataFileInfo()
+
+    expect(todos.dataFileInfo.value).toBeNull()
+  })
+
+  it('still populates dataFileInfo when the saved file cannot be read', async () => {
+    fileStorage.set('data.json', '{not-json')
+
+    const todos = useTodos()
+    await todos.loaded
+
+    expect(todos.loadErrorMessage.value).not.toBe('')
+    expect(todos.dataFileInfo.value).toEqual({
+      filePath: 'G:/LocalTodo/data.json',
+      exists: true,
+      size: expect.any(Number),
+      modifiedAtMs: 1_700_000_000_000
+    })
+  })
+
+  it('refreshes data file info after a successful save', async () => {
+    const todos = useTodos()
+    await todos.loaded
+
+    const callsAfterLoad = vi.mocked(window.api.getDataFileInfo).mock.calls.length
+
+    todos.draftTitle.value = 'Triggers a save'
+    todos.addTodo()
+    await advanceSaveDebounce()
+
+    expect(vi.mocked(window.api.getDataFileInfo).mock.calls.length).toBeGreaterThan(callsAfterLoad)
+  })
+
+  it('ignores a stale info response so it cannot overwrite newer metadata', async () => {
+    const todos = useTodos()
+    await todos.loaded
+
+    // First (stale) call resolves last; second (fresh) call resolves first.
+    const staleInfo = {
+      status: 'ok' as const,
+      filePath: 'G:/LocalTodo/data.json',
+      exists: true as const,
+      size: 11,
+      modifiedAtMs: 1_000
+    }
+    const freshInfo = {
+      status: 'ok' as const,
+      filePath: 'G:/LocalTodo/data.json',
+      exists: true as const,
+      size: 22,
+      modifiedAtMs: 2_000
+    }
+    let resolveStale: ((value: typeof staleInfo) => void) | null = null
+
+    vi.mocked(window.api.getDataFileInfo).mockImplementationOnce(
+      () => new Promise((resolve) => (resolveStale = resolve))
+    )
+    vi.mocked(window.api.getDataFileInfo).mockResolvedValueOnce(freshInfo)
+
+    const stalePromise = todos.refreshDataFileInfo()
+    const freshPromise = todos.refreshDataFileInfo()
+
+    await freshPromise
+    ;(resolveStale as ((value: typeof staleInfo) => void) | null)?.(staleInfo)
+    await stalePromise
+
+    expect(todos.dataFileInfo.value?.modifiedAtMs).toBe(2_000)
+    expect(todos.dataFileInfo.value?.size).toBe(22)
+  })
+
+  it('surfaces a friendly error when reveal/open are unsupported', async () => {
+    vi.stubGlobal('window', { api: { platform: 'win32' } })
+
+    const todos = useTodos()
+    await todos.loaded
+
+    await expect(todos.revealDataFile()).resolves.toEqual({
+      status: 'error',
+      message: 'Revealing the data file is not supported here.'
+    })
+    await expect(todos.openDataFile()).resolves.toEqual({
+      status: 'error',
+      message: 'Opening the data file is not supported here.'
     })
   })
 })

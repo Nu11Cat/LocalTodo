@@ -7,8 +7,11 @@ import type {
   ExportProjectAiContextPayload,
   ExportProjectAiContextResult,
   CreateImportRestorePointResult,
+  GetDataFileInfoResult,
   LoadDataResult,
+  OpenDataFileResult,
   OpenExportedAiContextResult,
+  RevealDataFileResult,
   RevealExportedAiContextResult,
   SaveDataResult,
   SelectDirectoryResult
@@ -33,6 +36,10 @@ const api = {
   loadData: (): Promise<LoadDataResult> => ipcRenderer.invoke('storage:loadData'),
   saveData: (payload: string): Promise<SaveDataResult> =>
     ipcRenderer.invoke('storage:saveData', payload),
+  getDataFileInfo: (): Promise<GetDataFileInfoResult> =>
+    ipcRenderer.invoke('storage:getDataFileInfo'),
+  revealDataFile: (): Promise<RevealDataFileResult> => ipcRenderer.invoke('storage:revealDataFile'),
+  openDataFile: (): Promise<OpenDataFileResult> => ipcRenderer.invoke('storage:openDataFile'),
   createImportRestorePoint: (payload: string): Promise<CreateImportRestorePointResult> =>
     ipcRenderer.invoke('storage:createImportRestorePoint', payload),
   selectDirectory: (): Promise<SelectDirectoryResult> =>

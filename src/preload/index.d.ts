@@ -26,6 +26,15 @@ export type LoadDataResult =
 
 export type SaveDataResult = { status: 'saved' } | { status: 'error'; message: string }
 
+export type GetDataFileInfoResult =
+  | { status: 'ok'; filePath: string; exists: true; size: number; modifiedAtMs: number }
+  | { status: 'ok'; filePath: string; exists: false }
+  | { status: 'error'; message: string }
+
+export type RevealDataFileResult = { status: 'revealed' } | { status: 'error'; message: string }
+
+export type OpenDataFileResult = { status: 'opened' } | { status: 'error'; message: string }
+
 export type CreateImportRestorePointResult =
   | { status: 'written'; filePath: string }
   | { status: 'error'; message: string }
@@ -85,6 +94,9 @@ declare global {
       ) => Promise<CleanupLocalTodoTaskFilesResult>
       loadData: () => Promise<LoadDataResult>
       saveData: (payload: string) => Promise<SaveDataResult>
+      getDataFileInfo: () => Promise<GetDataFileInfoResult>
+      revealDataFile: () => Promise<RevealDataFileResult>
+      openDataFile: () => Promise<OpenDataFileResult>
       createImportRestorePoint: (payload: string) => Promise<CreateImportRestorePointResult>
       selectDirectory: () => Promise<SelectDirectoryResult>
     }

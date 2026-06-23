@@ -96,6 +96,8 @@ type ImportTodosJsonApplyResult =
 
 type OpenExportedAiContextResult = { status: 'opened' } | { status: 'error'; message: string }
 type RevealExportedAiContextResult = { status: 'revealed' } | { status: 'error'; message: string }
+type RevealDataFileResult = { status: 'revealed' } | { status: 'error'; message: string }
+type OpenDataFileResult = { status: 'opened' } | { status: 'error'; message: string }
 type LoadTodosResult =
   | { status: 'loaded'; tasks: Task[] }
   | { status: 'error'; message: string; tasks: Task[] }
@@ -127,6 +129,15 @@ const quickViews: QuickView[] = [
   { id: 'blocked', label: 'Blocked' },
   { id: 'unassigned', label: 'No project' }
 ]
+
+// Renderer-friendly view of the persisted data file. size/modifiedAtMs are null
+// until the file exists; the UI formats modifiedAtMs into a local timestamp.
+export interface DataFileInfo {
+  filePath: string
+  exists: boolean
+  size: number | null
+  modifiedAtMs: number | null
+}
 
 function hasPatchKey(key: keyof EditableTaskPatch, patch: EditableTaskPatch): boolean {
   return Object.prototype.hasOwnProperty.call(patch, key)
@@ -229,10 +240,13 @@ export function useTodos() {
   const selectedTodoId = ref<string | null>(null)
   const filterState = ref<TaskFilterState>(createEmptyTaskFilterState())
   const sortState = ref<TaskSortState>(createDefaultTaskSortState())
+  const dataFileInfo = ref<DataFileInfo | null>(null)
   const isLoaded = ref(false)
   const loadErrorMessage = ref('')
   let shouldPersist = false
   let saveQueue = Promise.resolve()
+  // Monotonic token so a slow info lookup cannot overwrite a newer one.
+  let dataFileInfoRequestId = 0
 
   async function saveTodos(): Promise<void> {
     if (!shouldPersist) {
@@ -257,6 +271,9 @@ export function useTodos() {
 
         if (result.status === 'error') {
           console.warn('Failed to save todos:', result.message)
+        } else {
+          // Refresh size/modified time so the data file panel stays current.
+          void refreshDataFileInfo()
         }
       } catch (error) {
         console.warn('Failed to save todos:', error)
@@ -264,6 +281,58 @@ export function useTodos() {
     })
 
     await saveQueue
+  }
+
+  async function refreshDataFileInfo(): Promise<void> {
+    if (!window.api?.getDataFileInfo) {
+      dataFileInfo.value = null
+      return
+    }
+
+    const requestId = ++dataFileInfoRequestId
+
+    try {
+      const result = await window.api.getDataFileInfo()
+
+      // Drop the response if a newer refresh started while this was in flight.
+      if (requestId !== dataFileInfoRequestId) {
+        return
+      }
+
+      if (result.status !== 'ok') {
+        dataFileInfo.value = null
+        return
+      }
+
+      dataFileInfo.value = result.exists
+        ? {
+            filePath: result.filePath,
+            exists: true,
+            size: result.size,
+            modifiedAtMs: result.modifiedAtMs
+          }
+        : { filePath: result.filePath, exists: false, size: null, modifiedAtMs: null }
+    } catch {
+      if (requestId === dataFileInfoRequestId) {
+        dataFileInfo.value = null
+      }
+    }
+  }
+
+  async function revealDataFile(): Promise<RevealDataFileResult> {
+    if (!window.api?.revealDataFile) {
+      return { status: 'error', message: 'Revealing the data file is not supported here.' }
+    }
+
+    return window.api.revealDataFile()
+  }
+
+  async function openDataFile(): Promise<OpenDataFileResult> {
+    if (!window.api?.openDataFile) {
+      return { status: 'error', message: 'Opening the data file is not supported here.' }
+    }
+
+    return window.api.openDataFile()
   }
 
   const scheduleSaveTodos = debounceSave(() => {
@@ -279,11 +348,15 @@ export function useTodos() {
     if (result.status === 'error') {
       loadErrorMessage.value = result.message
       shouldPersist = false
+      // Still surface the data file location — it is most useful when the
+      // saved file could not be read.
+      await refreshDataFileInfo()
       return
     }
 
     await nextTick()
     shouldPersist = true
+    await refreshDataFileInfo()
   })()
 
   const filteredTodos = computed(() =>
@@ -805,6 +878,7 @@ export function useTodos() {
     filterState,
     sortState,
     quickViews,
+    dataFileInfo,
     isLoaded,
     loadErrorMessage,
     filteredTodos,
@@ -850,6 +924,9 @@ export function useTodos() {
     cleanupStaleLocalTodoTaskFiles,
     openExportedAiContext,
     revealExportedAiContext,
+    refreshDataFileInfo,
+    revealDataFile,
+    openDataFile,
     exportTodosJson,
     downloadTodosJson,
     previewTodosJsonImport,

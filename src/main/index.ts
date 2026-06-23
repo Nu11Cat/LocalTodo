@@ -29,6 +29,15 @@ type LoadDataResult =
 
 type SaveDataResult = { status: 'saved' } | { status: 'error'; message: string }
 
+type GetDataFileInfoResult =
+  | { status: 'ok'; filePath: string; exists: true; size: number; modifiedAtMs: number }
+  | { status: 'ok'; filePath: string; exists: false }
+  | { status: 'error'; message: string }
+
+type RevealDataFileResult = { status: 'revealed' } | { status: 'error'; message: string }
+
+type OpenDataFileResult = { status: 'opened' } | { status: 'error'; message: string }
+
 type CreateImportRestorePointResult =
   | { status: 'written'; filePath: string }
   | { status: 'error'; message: string }
@@ -85,6 +94,9 @@ const exportLocalTodoProjectChannel = 'localtodo:exportProject'
 const cleanupLocalTodoTaskFilesChannel = 'localtodo:cleanupStaleTaskFiles'
 const loadDataChannel = 'storage:loadData'
 const saveDataChannel = 'storage:saveData'
+const getDataFileInfoChannel = 'storage:getDataFileInfo'
+const revealDataFileChannel = 'storage:revealDataFile'
+const openDataFileChannel = 'storage:openDataFile'
 const createImportRestorePointChannel = 'storage:createImportRestorePoint'
 const selectDirectoryChannel = 'dialog:selectDirectory'
 const exportedPathsByWebContents = new WeakMap<WebContents, Set<string>>()
@@ -676,6 +688,94 @@ function registerStorageHandlers(): void {
   )
 }
 
+function registerDataFileInfoHandlers(): void {
+  // The data file path is resolved by the main process only. The renderer never
+  // supplies a path, so these handlers never touch arbitrary filesystem locations.
+  ipcMain.handle(getDataFileInfoChannel, async (): Promise<GetDataFileInfoResult> => {
+    const { dataFilePath } = resolveDataFilePaths()
+
+    try {
+      const fileStats = await stat(dataFilePath)
+
+      return {
+        status: 'ok',
+        filePath: dataFilePath,
+        exists: true,
+        size: fileStats.size,
+        modifiedAtMs: fileStats.mtimeMs
+      }
+    } catch (error) {
+      if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
+        return { status: 'ok', filePath: dataFilePath, exists: false }
+      }
+
+      return {
+        status: 'error',
+        message: error instanceof Error ? error.message : 'Failed to read data file info.'
+      }
+    }
+  })
+
+  ipcMain.handle(revealDataFileChannel, async (): Promise<RevealDataFileResult> => {
+    const { dataFilePath } = resolveDataFilePaths()
+
+    try {
+      await stat(dataFilePath)
+    } catch (error) {
+      if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
+        return { status: 'error', message: 'Data file does not exist yet.' }
+      }
+
+      return {
+        status: 'error',
+        message: error instanceof Error ? error.message : 'Failed to locate data file.'
+      }
+    }
+
+    try {
+      shell.showItemInFolder(dataFilePath)
+      return { status: 'revealed' }
+    } catch (error) {
+      return {
+        status: 'error',
+        message: error instanceof Error ? error.message : 'Failed to reveal data file.'
+      }
+    }
+  })
+
+  ipcMain.handle(openDataFileChannel, async (): Promise<OpenDataFileResult> => {
+    const { dataFilePath } = resolveDataFilePaths()
+
+    try {
+      await stat(dataFilePath)
+    } catch (error) {
+      if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
+        return { status: 'error', message: 'Data file does not exist yet.' }
+      }
+
+      return {
+        status: 'error',
+        message: error instanceof Error ? error.message : 'Failed to locate data file.'
+      }
+    }
+
+    try {
+      const errorMessage = await shell.openPath(dataFilePath)
+
+      if (errorMessage) {
+        return { status: 'error', message: errorMessage }
+      }
+
+      return { status: 'opened' }
+    } catch (error) {
+      return {
+        status: 'error',
+        message: error instanceof Error ? error.message : 'Failed to open data file.'
+      }
+    }
+  })
+}
+
 function createWindow(): void {
   const mainWindow = new BrowserWindow({
     width: 1000,
@@ -711,6 +811,7 @@ function createWindow(): void {
 app.whenReady().then(() => {
   app.setAppUserModelId('com.nu11cat.localtodo')
   registerStorageHandlers()
+  registerDataFileInfoHandlers()
   registerAiContextExportHandler()
   registerExportedFileActionHandlers()
   registerLocalTodoProjectExportHandler()

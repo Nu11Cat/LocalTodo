@@ -4,6 +4,7 @@ import ProjectDashboard from './components/ProjectDashboard.vue'
 import TaskDetailPanel from './components/TaskDetailPanel.vue'
 import { useTodos } from './composables/useTodos'
 import { taskPriorities, taskStatuses, taskTypes } from './domain/taskModel'
+import { taskTemplates } from './domain/taskTemplate'
 
 const fileInput = ref<HTMLInputElement | null>(null)
 const projectContextExportMessage = ref('')
@@ -13,6 +14,7 @@ const lastExportedAiContextFilePath = ref<string | null>(null)
 const {
   todos,
   draftTitle,
+  selectedTemplateId,
   selectedTodoId,
   filterState,
   isLoaded,
@@ -371,6 +373,12 @@ async function revealLastDir(): Promise<void> {
           placeholder="What needs to be done?"
           :disabled="!isLoaded"
         />
+        <label class="sr-only" for="todo-template">Task template</label>
+        <select id="todo-template" v-model="selectedTemplateId" :disabled="!isLoaded">
+          <option v-for="template in taskTemplates" :key="template.id" :value="template.id">
+            {{ template.label }}
+          </option>
+        </select>
         <button type="submit" :disabled="!isLoaded">Add</button>
       </form>
 

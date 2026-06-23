@@ -27,6 +27,11 @@ import {
 } from '@renderer/domain/taskModel'
 import { findProjectSummary, summarizeProjects } from '@renderer/domain/projectSummary'
 import { migrateStoredTasks } from '@renderer/domain/taskMigration'
+import {
+  buildTaskInputFromTemplate,
+  findTaskTemplate,
+  type TaskTemplateId
+} from '@renderer/domain/taskTemplate'
 
 const storageKey = 'localtodo.todos'
 const projectContextFileName = 'AI_CONTEXT.md'
@@ -201,6 +206,7 @@ function debounceSave(callback: () => void, delayMs: number): () => void {
 export function useTodos() {
   const todos = ref<Task[]>([])
   const draftTitle = ref('')
+  const selectedTemplateId = ref<TaskTemplateId>('blank')
   const selectedTodoId = ref<string | null>(null)
   const filterState = ref<TaskFilterState>(createEmptyTaskFilterState())
   const isLoaded = ref(false)
@@ -305,8 +311,13 @@ export function useTodos() {
       return
     }
 
-    todos.value.unshift(createTask({ title }))
+    const template = findTaskTemplate(selectedTemplateId.value)
+    const input = template ? buildTaskInputFromTemplate(template, title) : { title }
+    const newTask = createTask(input)
+
+    todos.value.unshift(newTask)
     draftTitle.value = ''
+    selectTodo(newTask.id)
   }
 
   function toggleTodo(id: string): void {
@@ -730,6 +741,7 @@ export function useTodos() {
   return {
     todos,
     draftTitle,
+    selectedTemplateId,
     selectedTodoId,
     filterState,
     isLoaded,

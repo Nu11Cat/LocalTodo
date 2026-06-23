@@ -116,6 +116,44 @@ describe('useTodos', () => {
     expect(todos.todos.value).toHaveLength(0)
   })
 
+  it('prefills a new task from the selected template', async () => {
+    const todos = useTodos()
+    await todos.loaded
+
+    todos.selectedTemplateId.value = 'bug'
+    todos.draftTitle.value = 'Crash on launch'
+    todos.addTodo()
+
+    expect(todos.todos.value).toHaveLength(1)
+    expect(todos.todos.value[0]).toMatchObject({
+      title: 'Crash on launch',
+      type: 'bug',
+      priority: 'high',
+      tags: ['bug'],
+      commands: ['npm test']
+    })
+    expect(todos.todos.value[0].description).toContain('Steps to reproduce')
+    expect(todos.selectedTodoId.value).toBe(todos.todos.value[0].id)
+    expect(todos.selectedTemplateId.value).toBe('bug')
+  })
+
+  it('creates a title-only task for the blank template', async () => {
+    const todos = useTodos()
+    await todos.loaded
+
+    todos.selectedTemplateId.value = 'blank'
+    todos.draftTitle.value = 'Plain task'
+    todos.addTodo()
+
+    expect(todos.todos.value[0]).toMatchObject({
+      title: 'Plain task',
+      type: 'chore',
+      description: '',
+      tags: [],
+      commands: []
+    })
+  })
+
   it('toggles tasks between active and completed lists', async () => {
     const todos = useTodos()
     await todos.loaded

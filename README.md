@@ -2,6 +2,15 @@
 
 LocalTodo is a local-first desktop todo app built with Electron, Vue, TypeScript, and electron-vite.
 
+## Using the app
+
+If you just want to use LocalTodo (not develop it), start here:
+
+- [用户使用说明 / User guide](docs/user-guide.md) — 完整功能说明（中文），含「第一次使用」上手步骤。
+- [配合 Claude Code 使用 / Using with Claude Code](docs/using-with-claude-code.md) — 把任务上下文交给 Claude Code 等 AI 工具的协作流程。
+
+The sections below are for developing LocalTodo itself.
+
 ## Requirements
 
 - Node.js 20 or newer

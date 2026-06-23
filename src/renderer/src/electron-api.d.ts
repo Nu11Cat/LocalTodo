@@ -1,4 +1,6 @@
 import type {
+  CleanupLocalTodoTaskFilesPayload,
+  CleanupLocalTodoTaskFilesResult,
   CreateImportRestorePointResult,
   ExportLocalTodoProjectPayload,
   ExportLocalTodoProjectResult,
@@ -22,6 +24,9 @@ declare global {
       openExportedAiContextFile: (filePath: string) => Promise<OpenExportedAiContextResult>
       revealExportedAiContextFile: (filePath: string) => Promise<RevealExportedAiContextResult>
       exportLocalTodoProject: (payload: ExportLocalTodoProjectPayload) => Promise<ExportLocalTodoProjectResult>
+      cleanupStaleLocalTodoTaskFiles: (
+        payload: CleanupLocalTodoTaskFilesPayload
+      ) => Promise<CleanupLocalTodoTaskFilesResult>
       loadData: () => Promise<LoadDataResult>
       saveData: (payload: string) => Promise<SaveDataResult>
       createImportRestorePoint: (payload: string) => Promise<CreateImportRestorePointResult>

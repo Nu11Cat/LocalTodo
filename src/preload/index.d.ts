@@ -56,8 +56,18 @@ export type ExportLocalTodoProjectResult =
       aiContextFilePath: string
       tasksJsonFilePath: string
       taskFilePaths: string[]
+      staleTaskFiles: string[]
       gitignore: LocalTodoGitignoreResult
     }
+  | { status: 'error'; message: string }
+
+export interface CleanupLocalTodoTaskFilesPayload {
+  repoPath: string
+  fileNames: string[]
+}
+
+export type CleanupLocalTodoTaskFilesResult =
+  | { status: 'deleted'; deletedFileNames: string[] }
   | { status: 'error'; message: string }
 
 declare global {
@@ -70,6 +80,9 @@ declare global {
       openExportedAiContextFile: (filePath: string) => Promise<OpenExportedAiContextResult>
       revealExportedAiContextFile: (filePath: string) => Promise<RevealExportedAiContextResult>
       exportLocalTodoProject: (payload: ExportLocalTodoProjectPayload) => Promise<ExportLocalTodoProjectResult>
+      cleanupStaleLocalTodoTaskFiles: (
+        payload: CleanupLocalTodoTaskFilesPayload
+      ) => Promise<CleanupLocalTodoTaskFilesResult>
       loadData: () => Promise<LoadDataResult>
       saveData: (payload: string) => Promise<SaveDataResult>
       createImportRestorePoint: (payload: string) => Promise<CreateImportRestorePointResult>

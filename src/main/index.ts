@@ -1,5 +1,5 @@
 import { basename, dirname, isAbsolute, join, normalize } from 'node:path'
-import { mkdir, readFile, rename, stat, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, readdir, rename, stat, unlink, writeFile } from 'node:fs/promises'
 import { app, BrowserWindow, dialog, ipcMain, shell, type WebContents } from 'electron'
 import { is } from '@electron-toolkit/utils'
 
@@ -64,14 +64,25 @@ type ExportLocalTodoProjectResult =
       aiContextFilePath: string
       tasksJsonFilePath: string
       taskFilePaths: string[]
+      staleTaskFiles: string[]
       gitignore: LocalTodoGitignoreResult
     }
+  | { status: 'error'; message: string }
+
+type CleanupLocalTodoTaskFilesPayload = {
+  repoPath?: unknown
+  fileNames?: unknown
+}
+
+type CleanupLocalTodoTaskFilesResult =
+  | { status: 'deleted'; deletedFileNames: string[] }
   | { status: 'error'; message: string }
 
 const exportProjectAiContextChannel = 'aiContext:exportProject'
 const openExportedAiContextChannel = 'aiContext:openExportedFile'
 const revealExportedAiContextChannel = 'aiContext:revealExportedFile'
 const exportLocalTodoProjectChannel = 'localtodo:exportProject'
+const cleanupLocalTodoTaskFilesChannel = 'localtodo:cleanupStaleTaskFiles'
 const loadDataChannel = 'storage:loadData'
 const saveDataChannel = 'storage:saveData'
 const createImportRestorePointChannel = 'storage:createImportRestorePoint'
@@ -247,6 +258,20 @@ function createTaskMarkdownFileName(taskId: string): string | null {
   return `task_${safeId}.md`
 }
 
+const localTodoTaskFileNamePattern = /^task_.+\.md$/i
+
+function isLocalTodoTaskFileName(fileName: string): boolean {
+  return basename(fileName) === fileName && localTodoTaskFileNamePattern.test(fileName)
+}
+
+function selectStaleTaskFileNames(existingFileNames: string[], keepFileNames: string[]): string[] {
+  const keepKeys = new Set(keepFileNames.map((name) => name.toLowerCase()))
+
+  return existingFileNames.filter(
+    (name) => isLocalTodoTaskFileName(name) && !keepKeys.has(name.toLowerCase())
+  )
+}
+
 function normalizeTaskMarkdownFiles(value: unknown):
   | { status: 'ok'; files: Array<LocalTodoTaskMarkdownFile & { fileName: string }> }
   | { status: 'error'; message: string } {
@@ -384,11 +409,97 @@ function registerLocalTodoProjectExportHandler(): void {
         trackExportedPath(event.sender, aiContextFilePath)
         trackExportedPath(event.sender, tasksJsonFilePath)
 
-        return { status: 'written', dirPath, aiContextFilePath, tasksJsonFilePath, taskFilePaths, gitignore }
+        const staleTaskFiles = await collectStaleTaskFiles(
+          tasksDirPath,
+          taskMarkdownFiles.files.map((file) => file.fileName)
+        )
+
+        return {
+          status: 'written',
+          dirPath,
+          aiContextFilePath,
+          tasksJsonFilePath,
+          taskFilePaths,
+          staleTaskFiles,
+          gitignore
+        }
       } catch (error) {
         return {
           status: 'error',
           message: error instanceof Error ? error.message : 'Failed to export .localtodo project workspace.'
+        }
+      }
+    }
+  )
+}
+
+async function collectStaleTaskFiles(
+  tasksDirPath: string,
+  keepFileNames: string[]
+): Promise<string[]> {
+  try {
+    const existing = await readdir(tasksDirPath)
+
+    return selectStaleTaskFileNames(existing, keepFileNames)
+  } catch {
+    return []
+  }
+}
+
+function registerLocalTodoCleanupHandler(): void {
+  ipcMain.handle(
+    cleanupLocalTodoTaskFilesChannel,
+    async (
+      _event,
+      payload: CleanupLocalTodoTaskFilesPayload
+    ): Promise<CleanupLocalTodoTaskFilesResult> => {
+      if (typeof payload?.repoPath !== 'string' || payload.repoPath.trim() === '') {
+        return { status: 'error', message: 'Project repository path is missing.' }
+      }
+
+      const repoPath = normalize(payload.repoPath.trim())
+
+      if (!isAbsolute(repoPath)) {
+        return { status: 'error', message: 'Project repository path must be absolute.' }
+      }
+
+      if (!Array.isArray(payload.fileNames)) {
+        return { status: 'error', message: 'Stale task file names are missing.' }
+      }
+
+      const fileNames: string[] = []
+
+      for (const fileName of payload.fileNames) {
+        if (typeof fileName !== 'string' || !isLocalTodoTaskFileName(fileName)) {
+          return { status: 'error', message: 'Stale task file name is not valid.' }
+        }
+
+        fileNames.push(fileName)
+      }
+
+      try {
+        const tasksDirPath = join(repoPath, '.localtodo', 'tasks')
+        const deletedFileNames: string[] = []
+
+        for (const fileName of fileNames) {
+          try {
+            await unlink(join(tasksDirPath, fileName))
+          } catch (error) {
+            if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
+              continue
+            }
+
+            throw error
+          }
+
+          deletedFileNames.push(fileName)
+        }
+
+        return { status: 'deleted', deletedFileNames }
+      } catch (error) {
+        return {
+          status: 'error',
+          message: error instanceof Error ? error.message : 'Failed to delete stale task files.'
         }
       }
     }
@@ -603,6 +714,7 @@ app.whenReady().then(() => {
   registerAiContextExportHandler()
   registerExportedFileActionHandlers()
   registerLocalTodoProjectExportHandler()
+  registerLocalTodoCleanupHandler()
   registerDialogHandlers()
 
   createWindow()

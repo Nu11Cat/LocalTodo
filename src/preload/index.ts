@@ -1,5 +1,7 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import type {
+  CleanupLocalTodoTaskFilesPayload,
+  CleanupLocalTodoTaskFilesResult,
   ExportLocalTodoProjectPayload,
   ExportLocalTodoProjectResult,
   ExportProjectAiContextPayload,
@@ -24,6 +26,10 @@ const api = {
   exportLocalTodoProject: (
     payload: ExportLocalTodoProjectPayload
   ): Promise<ExportLocalTodoProjectResult> => ipcRenderer.invoke('localtodo:exportProject', payload),
+  cleanupStaleLocalTodoTaskFiles: (
+    payload: CleanupLocalTodoTaskFilesPayload
+  ): Promise<CleanupLocalTodoTaskFilesResult> =>
+    ipcRenderer.invoke('localtodo:cleanupStaleTaskFiles', payload),
   loadData: (): Promise<LoadDataResult> => ipcRenderer.invoke('storage:loadData'),
   saveData: (payload: string): Promise<SaveDataResult> =>
     ipcRenderer.invoke('storage:saveData', payload),

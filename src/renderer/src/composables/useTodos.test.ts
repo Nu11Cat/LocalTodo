@@ -22,6 +22,7 @@ function createMockApi() {
       aiContextFilePath: 'G:/repo/.localtodo/AI_CONTEXT.md',
       tasksJsonFilePath: 'G:/repo/.localtodo/tasks.json',
       taskFilePaths: ['G:/repo/.localtodo/tasks/task_task-id.md'],
+      staleTaskFiles: [],
       gitignore: {
         status: 'not-requested',
         filePath: 'G:/repo/.gitignore',
@@ -29,6 +30,9 @@ function createMockApi() {
       },
       excludedSensitiveCount: 0
     }),
+    cleanupStaleLocalTodoTaskFiles: vi
+      .fn()
+      .mockResolvedValue({ status: 'deleted', deletedFileNames: [] }),
     loadData: vi.fn().mockImplementation((): Promise<{ status: 'ok'; data: string } | { status: 'missing' }> => {
       if (fileStorage.has('data.json')) {
         return Promise.resolve({ status: 'ok', data: fileStorage.get('data.json')! })
@@ -1179,6 +1183,7 @@ describe('useTodos', () => {
       aiContextFilePath: 'G:/repo/.localtodo/AI_CONTEXT.md',
       tasksJsonFilePath: 'G:/repo/.localtodo/tasks.json',
       taskFilePaths: ['G:/repo/.localtodo/tasks/task_task-id.md'],
+      staleTaskFiles: [],
       gitignore: {
         status: 'not-requested',
         filePath: 'G:/repo/.gitignore',

@@ -49,10 +49,15 @@ type ExportLocalTodoProjectResult =
       aiContextFilePath: string
       tasksJsonFilePath: string
       taskFilePaths: string[]
+      staleTaskFiles: string[]
       gitignore: LocalTodoGitignoreResult
       excludedSensitiveCount: number
     }
   | { status: 'error'; message: string; excludedSensitiveCount: number }
+
+type CleanupStaleLocalTodoTaskFilesResult =
+  | { status: 'deleted'; deletedFileNames: string[] }
+  | { status: 'error'; message: string }
 
 type SensitiveTaskActionOptions = {
   includeSensitive?: boolean
@@ -544,6 +549,29 @@ export function useTodos() {
     return { ...result, excludedSensitiveCount: context.excludedSensitiveCount }
   }
 
+  async function cleanupStaleLocalTodoTaskFiles(
+    key: string,
+    fileNames: string[]
+  ): Promise<CleanupStaleLocalTodoTaskFilesResult> {
+    if (!window.api?.cleanupStaleLocalTodoTaskFiles) {
+      return { status: 'error', message: 'Stale task file cleanup is not available.' }
+    }
+
+    const summary = findProjectSummary(projectSummaries.value, key)
+
+    if (!summary) {
+      return { status: 'error', message: 'Project was not found.' }
+    }
+
+    const repoPath = summary.repoPath
+
+    if (!repoPath) {
+      return { status: 'error', message: 'Project does not have a repository path.' }
+    }
+
+    return window.api.cleanupStaleLocalTodoTaskFiles({ repoPath, fileNames })
+  }
+
   async function openExportedAiContext(filePath: string): Promise<OpenExportedAiContextResult> {
     if (!window.api?.openExportedAiContextFile) {
       return { status: 'error', message: 'Open exported AI context is not available.' }
@@ -689,6 +717,7 @@ export function useTodos() {
     exportProjectAiContext,
     exportProjectGroupAiContext,
     exportLocalTodoProject,
+    cleanupStaleLocalTodoTaskFiles,
     openExportedAiContext,
     revealExportedAiContext,
     exportTodosJson,

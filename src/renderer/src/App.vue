@@ -48,6 +48,7 @@ const {
   exportProjectAiContext,
   exportProjectGroupAiContext,
   exportLocalTodoProject,
+  cleanupStaleLocalTodoTaskFiles,
   openExportedAiContext,
   revealExportedAiContext,
   downloadTodosJson,
@@ -256,10 +257,38 @@ async function exportProjectLocalTodo(key: string): Promise<void> {
   if (result.status === 'written') {
     lastExportedAiContextFilePath.value = result.aiContextFilePath
     projectContextExportMessage.value = `Saved .localtodo workspace to ${result.dirPath} (${result.taskFilePaths.length} task files).${formatSensitiveExclusionMessage(result.excludedSensitiveCount)}${formatGitignoreExportMessage(result)}`
+    await cleanupStaleLocalTodoTaskFilesWithConfirm(key, result.staleTaskFiles)
     return
   }
 
   projectContextExportMessage.value = `Export failed: ${result.message}`
+}
+
+async function cleanupStaleLocalTodoTaskFilesWithConfirm(
+  key: string,
+  staleTaskFiles: string[]
+): Promise<void> {
+  if (staleTaskFiles.length === 0) {
+    return
+  }
+
+  const confirmed = window.confirm(
+    `LocalTodo found ${staleTaskFiles.length} stale task file${staleTaskFiles.length === 1 ? '' : 's'} in .localtodo/tasks/ that no longer match this project:\n\n${staleTaskFiles.join('\n')}\n\nDelete these files? Choose Cancel to keep them.`
+  )
+
+  if (!confirmed) {
+    projectContextExportMessage.value += ` Kept ${staleTaskFiles.length} stale task file${staleTaskFiles.length === 1 ? '' : 's'}.`
+    return
+  }
+
+  const cleanup = await cleanupStaleLocalTodoTaskFiles(key, staleTaskFiles)
+
+  if (cleanup.status === 'deleted') {
+    projectContextExportMessage.value += ` Deleted ${cleanup.deletedFileNames.length} stale task file${cleanup.deletedFileNames.length === 1 ? '' : 's'}.`
+    return
+  }
+
+  projectContextExportMessage.value += ` Failed to delete stale task files: ${cleanup.message}`
 }
 
 async function openLastExport(): Promise<void> {

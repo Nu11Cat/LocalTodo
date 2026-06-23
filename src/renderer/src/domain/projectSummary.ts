@@ -27,6 +27,9 @@ export function getProjectKey(task: Task): string {
   return `${task.projectName ?? ''}\n${task.repoPath ?? ''}`
 }
 
+// Composite key produced by getProjectKey for tasks with neither projectName nor repoPath.
+export const unassignedProjectKey = '\n'
+
 function createProjectLabel(projectName?: string, repoPath?: string): string {
   return projectName ?? repoPath ?? '(No project)'
 }

@@ -66,6 +66,23 @@ describe('taskFilter', () => {
     expect(matchesTaskFilter(baseTask, filter({ tags: ['ai', 'backend'] }))).toBe(false)
   })
 
+  it('defaults tagMatchMode to all and matches any when requested', () => {
+    expect(createEmptyTaskFilterState().tagMatchMode).toBe('all')
+    expect(matchesTaskFilter(baseTask, filter({ tags: ['ai', 'backend'], tagMatchMode: 'any' }))).toBe(
+      true
+    )
+    expect(matchesTaskFilter(baseTask, filter({ tags: ['backend', 'devops'], tagMatchMode: 'any' }))).toBe(
+      false
+    )
+    expect(matchesTaskFilter(baseTask, filter({ tags: ['ai', 'backend'], tagMatchMode: 'all' }))).toBe(
+      false
+    )
+  })
+
+  it('ignores tagMatchMode when deciding if filters are empty', () => {
+    expect(isTaskFilterStateEmpty(filter({ tagMatchMode: 'any' }))).toBe(true)
+  })
+
   it('filters by project key', () => {
     expect(matchesTaskFilter(baseTask, filter({ projects: ['LocalTodo\nG:/Zhao/nu11cat/LocalTodo'] }))).toBe(
       true

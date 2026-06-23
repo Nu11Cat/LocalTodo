@@ -10,8 +10,14 @@ import {
   createEmptyTaskFilterState,
   filterTasks,
   isTaskFilterStateEmpty,
+  type TagMatchMode,
   type TaskFilterState
 } from '@renderer/domain/taskFilter'
+import {
+  createDefaultTaskSortState,
+  sortTasks,
+  type TaskSortState
+} from '@renderer/domain/taskSort'
 import {
   createTask,
   createTaskNote,
@@ -25,7 +31,7 @@ import {
   type TaskStatus,
   type TaskType
 } from '@renderer/domain/taskModel'
-import { findProjectSummary, summarizeProjects } from '@renderer/domain/projectSummary'
+import { findProjectSummary, summarizeProjects, unassignedProjectKey } from '@renderer/domain/projectSummary'
 import { migrateStoredTasks } from '@renderer/domain/taskMigration'
 import {
   buildTaskInputFromTemplate,
@@ -108,6 +114,19 @@ type EditableTaskPatch = Partial<{
 }>
 
 type TaskFilterKey = 'statuses' | 'priorities' | 'types' | 'tags'
+
+export type QuickViewId = 'recent' | 'blocked' | 'unassigned'
+
+export interface QuickView {
+  id: QuickViewId
+  label: string
+}
+
+const quickViews: QuickView[] = [
+  { id: 'recent', label: 'Recently updated' },
+  { id: 'blocked', label: 'Blocked' },
+  { id: 'unassigned', label: 'No project' }
+]
 
 function hasPatchKey(key: keyof EditableTaskPatch, patch: EditableTaskPatch): boolean {
   return Object.prototype.hasOwnProperty.call(patch, key)
@@ -209,6 +228,7 @@ export function useTodos() {
   const selectedTemplateId = ref<TaskTemplateId>('blank')
   const selectedTodoId = ref<string | null>(null)
   const filterState = ref<TaskFilterState>(createEmptyTaskFilterState())
+  const sortState = ref<TaskSortState>(createDefaultTaskSortState())
   const isLoaded = ref(false)
   const loadErrorMessage = ref('')
   let shouldPersist = false
@@ -266,12 +286,17 @@ export function useTodos() {
     shouldPersist = true
   })()
 
-  const filteredTodos = computed(() => filterTasks(todos.value, filterState.value))
+  const filteredTodos = computed(() =>
+    sortTasks(filterTasks(todos.value, filterState.value), sortState.value)
+  )
   const activeTodos = computed(() => filteredTodos.value.filter(isTaskActive))
   const completedTodos = computed(() => filteredTodos.value.filter(isTaskDone))
   const totalActiveCount = computed(() => todos.value.filter(isTaskActive).length)
   const totalCompletedCount = computed(() => todos.value.filter(isTaskDone).length)
   const hasActiveFilters = computed(() => !isTaskFilterStateEmpty(filterState.value))
+  const hasNonDefaultSort = computed(() => sortState.value.key !== 'manual')
+  // Drives the "Clear filters" entry: visible when filters OR sort deviate from default.
+  const hasActiveView = computed(() => hasActiveFilters.value || hasNonDefaultSort.value)
   const projectSummaries = computed(() => summarizeProjects(todos.value))
   const hasProjectDashboard = computed(() => todos.value.length > 0)
   const selectedProjectKey = computed(() => filterState.value.projects[0] ?? null)
@@ -471,8 +496,42 @@ export function useTodos() {
     }
   }
 
+  function setTagMatchMode(mode: TagMatchMode): void {
+    filterState.value = {
+      ...filterState.value,
+      tagMatchMode: mode
+    }
+  }
+
+  function setSortState(state: TaskSortState): void {
+    sortState.value = state
+  }
+
+  function applyQuickView(id: QuickViewId): void {
+    if (id === 'recent') {
+      // Recent is a sort dimension; leave the current filters untouched.
+      setSortState({ key: 'updatedAt', direction: 'desc' })
+      return
+    }
+
+    // Blocked and unassigned are view presets: reset filters, then narrow.
+    if (id === 'blocked') {
+      filterState.value = {
+        ...createEmptyTaskFilterState(),
+        statuses: ['blocked']
+      }
+      return
+    }
+
+    filterState.value = {
+      ...createEmptyTaskFilterState(),
+      projects: [unassignedProjectKey]
+    }
+  }
+
   function resetFilters(): void {
     filterState.value = createEmptyTaskFilterState()
+    sortState.value = createDefaultTaskSortState()
   }
 
   async function copyTaskAiContext(
@@ -744,6 +803,8 @@ export function useTodos() {
     selectedTemplateId,
     selectedTodoId,
     filterState,
+    sortState,
+    quickViews,
     isLoaded,
     loadErrorMessage,
     filteredTodos,
@@ -752,6 +813,8 @@ export function useTodos() {
     totalActiveCount,
     totalCompletedCount,
     hasActiveFilters,
+    hasNonDefaultSort,
+    hasActiveView,
     projectSummaries,
     hasProjectDashboard,
     selectedProjectKey,
@@ -770,6 +833,9 @@ export function useTodos() {
     togglePriorityFilter,
     toggleTypeFilter,
     toggleTagFilter,
+    setTagMatchMode,
+    setSortState,
+    applyQuickView,
     setProjectFilter,
     resetFilters,
     removeTodo,

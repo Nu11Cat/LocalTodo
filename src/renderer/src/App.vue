@@ -5,6 +5,14 @@ import TaskDetailPanel from './components/TaskDetailPanel.vue'
 import { useTodos } from './composables/useTodos'
 import { taskPriorities, taskStatuses, taskTypes } from './domain/taskModel'
 import { taskTemplates } from './domain/taskTemplate'
+import type { TaskSortKey } from './domain/taskSort'
+
+const sortOptions: { value: TaskSortKey; label: string }[] = [
+  { value: 'manual', label: 'Manual' },
+  { value: 'updatedAt', label: 'Updated' },
+  { value: 'createdAt', label: 'Created' },
+  { value: 'priority', label: 'Priority' }
+]
 
 const fileInput = ref<HTMLInputElement | null>(null)
 const projectContextExportMessage = ref('')
@@ -17,6 +25,8 @@ const {
   selectedTemplateId,
   selectedTodoId,
   filterState,
+  sortState,
+  quickViews,
   isLoaded,
   loadErrorMessage,
   activeTodos,
@@ -24,6 +34,7 @@ const {
   totalActiveCount,
   totalCompletedCount,
   hasActiveFilters,
+  hasActiveView,
   projectSummaries,
   hasProjectDashboard,
   selectedProjectKey,
@@ -41,6 +52,9 @@ const {
   togglePriorityFilter,
   toggleTypeFilter,
   toggleTagFilter,
+  setTagMatchMode,
+  setSortState,
+  applyQuickView,
   setProjectFilter,
   resetFilters,
   removeTodo,
@@ -110,6 +124,17 @@ function updateSelectedTodo(patch: Parameters<typeof updateTodo>[1]): void {
   if (selectedTodo.value) {
     updateTodo(selectedTodo.value.id, patch)
   }
+}
+
+function changeSortKey(key: TaskSortKey): void {
+  setSortState({ key, direction: sortState.value.direction })
+}
+
+function toggleSortDirection(): void {
+  setSortState({
+    key: sortState.value.key,
+    direction: sortState.value.direction === 'asc' ? 'desc' : 'asc'
+  })
 }
 
 function addNoteToSelectedTodo(content: string): void {
@@ -442,7 +467,7 @@ async function revealLastDir(): Promise<void> {
     <section class="filter-bar" aria-labelledby="filter-title">
       <div class="filter-header">
         <h2 id="filter-title">Find tasks</h2>
-        <button v-if="hasActiveFilters" type="button" class="ghost-button" @click="resetFilters">
+        <button v-if="hasActiveView" type="button" class="ghost-button" @click="resetFilters">
           Clear filters
         </button>
       </div>
@@ -456,6 +481,38 @@ async function revealLastDir(): Promise<void> {
         placeholder="Search title, description, or tags"
         @input="setFilterKeyword(($event.target as HTMLInputElement).value)"
       />
+
+      <div class="filter-row" aria-label="Quick views">
+        <span>Quick views</span>
+        <button
+          v-for="quickView in quickViews"
+          :key="quickView.id"
+          type="button"
+          class="filter-chip"
+          @click="applyQuickView(quickView.id)"
+        >
+          {{ quickView.label }}
+        </button>
+      </div>
+
+      <div class="filter-row" aria-label="Sort">
+        <span>Sort</span>
+        <label class="sr-only" for="task-sort">Sort tasks by</label>
+        <select id="task-sort" :value="sortState.key" @change="changeSortKey(($event.target as HTMLSelectElement).value as TaskSortKey)">
+          <option v-for="option in sortOptions" :key="option.value" :value="option.value">
+            {{ option.label }}
+          </option>
+        </select>
+        <button
+          type="button"
+          class="filter-chip"
+          :disabled="sortState.key === 'manual'"
+          :aria-label="sortState.direction === 'asc' ? 'Sort ascending' : 'Sort descending'"
+          @click="toggleSortDirection"
+        >
+          {{ sortState.direction === 'asc' ? 'Asc' : 'Desc' }}
+        </button>
+      </div>
 
       <div class="filter-row" aria-label="Status filters">
         <span>Status</span>
@@ -504,6 +561,15 @@ async function revealLastDir(): Promise<void> {
 
       <div v-if="availableTags.length > 0" class="filter-row" aria-label="Tag filters">
         <span>Tags</span>
+        <button
+          type="button"
+          class="filter-chip"
+          :class="{ 'is-active': filterState.tagMatchMode === 'any' }"
+          :aria-pressed="filterState.tagMatchMode === 'any'"
+          @click="setTagMatchMode(filterState.tagMatchMode === 'any' ? 'all' : 'any')"
+        >
+          {{ filterState.tagMatchMode === 'any' ? 'Match any' : 'Match all' }}
+        </button>
         <button
           v-for="tag in availableTags"
           :key="tag"

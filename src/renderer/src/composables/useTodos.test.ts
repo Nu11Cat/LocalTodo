@@ -723,6 +723,119 @@ describe('useTodos', () => {
     expect(todos.activeTodos.value.map((todo) => todo.title)).toEqual(['Alpha task'])
   })
 
+  it('matches any selected tag when tagMatchMode is any', async () => {
+    const todos = useTodos()
+    await todos.loaded
+
+    todos.draftTitle.value = 'Alpha task'
+    todos.addTodo()
+    todos.updateTodo(todos.todos.value[0].id, { tags: ['frontend'] })
+    todos.draftTitle.value = 'Beta task'
+    todos.addTodo()
+    todos.updateTodo(todos.todos.value[0].id, { tags: ['backend'] })
+
+    todos.toggleTagFilter('frontend')
+    todos.toggleTagFilter('backend')
+    expect(todos.activeTodos.value).toHaveLength(0)
+
+    todos.setTagMatchMode('any')
+    expect(todos.activeTodos.value.map((todo) => todo.title).sort()).toEqual(['Alpha task', 'Beta task'])
+  })
+
+  it('sorts filtered tasks by the selected sort state', async () => {
+    vi.setSystemTime(new Date('2026-06-16T01:00:00.000Z'))
+    const todos = useTodos()
+    await todos.loaded
+
+    todos.draftTitle.value = 'Older task'
+    todos.addTodo()
+    vi.setSystemTime(new Date('2026-06-16T05:00:00.000Z'))
+    todos.draftTitle.value = 'Newer task'
+    todos.addTodo()
+
+    // Default manual order keeps newest-inserted first (unshift).
+    expect(todos.activeTodos.value.map((todo) => todo.title)).toEqual(['Newer task', 'Older task'])
+
+    todos.setSortState({ key: 'createdAt', direction: 'asc' })
+    expect(todos.activeTodos.value.map((todo) => todo.title)).toEqual(['Older task', 'Newer task'])
+
+    todos.setSortState({ key: 'priority', direction: 'desc' })
+    todos.updateTodo(todos.todos.value.find((t) => t.title === 'Older task')!.id, { priority: 'urgent' })
+    expect(todos.activeTodos.value[0].title).toBe('Older task')
+  })
+
+  it('applies the blocked quick view and clears prior filters', async () => {
+    const todos = useTodos()
+    await todos.loaded
+
+    todos.draftTitle.value = 'Active task'
+    todos.addTodo()
+    todos.draftTitle.value = 'Blocked task'
+    todos.addTodo()
+    todos.updateTodo(todos.todos.value[0].id, { status: 'blocked' })
+
+    // A stale keyword filter should not survive a view preset.
+    todos.setFilterKeyword('Active')
+    todos.applyQuickView('blocked')
+
+    expect(todos.filterState.value.keyword).toBe('')
+    expect(todos.filterState.value.statuses).toEqual(['blocked'])
+    expect(todos.activeTodos.value.map((todo) => todo.title)).toEqual(['Blocked task'])
+  })
+
+  it('applies the unassigned quick view and clears prior filters', async () => {
+    const todos = useTodos()
+    await todos.loaded
+
+    todos.draftTitle.value = 'Project task'
+    todos.addTodo()
+    todos.updateTodo(todos.todos.value[0].id, { projectName: 'LocalTodo' })
+    todos.draftTitle.value = 'Loose task'
+    todos.addTodo()
+
+    todos.setFilterKeyword('Project')
+    todos.applyQuickView('unassigned')
+
+    expect(todos.filterState.value.keyword).toBe('')
+    expect(todos.activeTodos.value.map((todo) => todo.title)).toEqual(['Loose task'])
+  })
+
+  it('applies the recent quick view by sorting on updatedAt desc without touching filters', async () => {
+    const todos = useTodos()
+    await todos.loaded
+
+    todos.setFilterKeyword('keep me')
+    todos.applyQuickView('recent')
+
+    expect(todos.sortState.value).toEqual({ key: 'updatedAt', direction: 'desc' })
+    expect(todos.filterState.value.keyword).toBe('keep me')
+  })
+
+  it('exposes sort state through hasActiveView for the clear entry', async () => {
+    const todos = useTodos()
+    await todos.loaded
+
+    expect(todos.hasActiveView.value).toBe(false)
+
+    todos.setSortState({ key: 'priority', direction: 'desc' })
+
+    expect(todos.hasActiveFilters.value).toBe(false)
+    expect(todos.hasActiveView.value).toBe(true)
+  })
+
+  it('resets sort state along with filters', async () => {
+    const todos = useTodos()
+    await todos.loaded
+
+    todos.setSortState({ key: 'priority', direction: 'asc' })
+    todos.setFilterKeyword('anything')
+
+    todos.resetFilters()
+
+    expect(todos.sortState.value).toEqual({ key: 'manual', direction: 'desc' })
+    expect(todos.hasActiveFilters.value).toBe(false)
+  })
+
   it('tracks filtered and total counts separately', async () => {
     const todos = useTodos()
     await todos.loaded

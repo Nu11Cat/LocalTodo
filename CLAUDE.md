@@ -46,6 +46,8 @@ Vitest tests are discovered under `src/**/*.test.ts`. Existing tests cover the t
   - `testing.md` for verification expectations and commands.
   - `api-conventions.md` for preload bridge and future local API conventions.
   - `interaction.md` for user-facing response preferences.
+  - `environment.md` for getting approval before changing the local dev environment.
+  - `best-practices.md` for flagging when work should use a subagent, agent team, or be promoted to a rule/command/skill.
 - `.claude/skills/` contains project workflow skills.
 - `.claude/agents/` contains reusable subagent role definitions.
 

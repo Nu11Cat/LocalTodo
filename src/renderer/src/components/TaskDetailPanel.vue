@@ -36,6 +36,8 @@ const props = withDefaults(
 
 const emit = defineEmits<{
   update: [patch: TaskPatch]
+  addNote: [content: string]
+  removeNote: [noteId: string]
   close: []
   copy: []
 }>()
@@ -46,6 +48,7 @@ const tagDraft = ref('')
 const relatedFileDraft = ref('')
 const commandDraft = ref('')
 const descriptionDraft = ref('')
+const noteDraft = ref('')
 
 watch(
   () => props.task,
@@ -56,6 +59,7 @@ watch(
     relatedFileDraft.value = ''
     commandDraft.value = ''
     descriptionDraft.value = task?.description ?? ''
+    noteDraft.value = ''
   },
   { immediate: true }
 )
@@ -101,6 +105,8 @@ function saveRepoPath(): void {
 }
 
 const canSelectDirectory = computed(() => typeof window.api?.selectDirectory === 'function')
+
+const notesNewestFirst = computed(() => (props.task ? [...props.task.notes].reverse() : []))
 
 const showRepoPathWarning = computed(() => {
   const value = repoPathDraft.value.trim()
@@ -269,6 +275,38 @@ function saveDescriptionWithShortcut(event: KeyboardEvent): void {
   if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
     saveDescription()
   }
+}
+
+function addNote(): void {
+  if (!props.task) {
+    return
+  }
+
+  const content = noteDraft.value.trim()
+
+  if (!content) {
+    return
+  }
+
+  emit('addNote', content)
+  noteDraft.value = ''
+}
+
+function addNoteWithShortcut(event: KeyboardEvent): void {
+  if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+    event.preventDefault()
+    addNote()
+  }
+}
+
+function formatNoteTimestamp(value: string): string {
+  const date = new Date(value)
+
+  if (Number.isNaN(date.getTime())) {
+    return value
+  }
+
+  return date.toLocaleString()
 }
 </script>
 
@@ -455,6 +493,30 @@ function saveDescriptionWithShortcut(event: KeyboardEvent): void {
           @blur="saveDescription"
           @keydown="saveDescriptionWithShortcut"
         />
+      </div>
+
+      <div class="detail-field">
+        <label for="task-note">Activity log</label>
+        <ol v-if="notesNewestFirst.length > 0" class="note-list" aria-label="Activity log">
+          <li v-for="note in notesNewestFirst" :key="note.id" class="note-item">
+            <div class="note-meta">
+              <time :datetime="note.createdAt">{{ formatNoteTimestamp(note.createdAt) }}</time>
+              <button type="button" class="ghost-button" @click="emit('removeNote', note.id)">
+                Remove
+              </button>
+            </div>
+            <p class="note-content">{{ note.content }}</p>
+          </li>
+        </ol>
+        <p v-else class="empty-state">No activity yet.</p>
+        <textarea
+          id="task-note"
+          v-model="noteDraft"
+          rows="3"
+          placeholder="Add a progress note: what you did, why it's blocked, next step. Ctrl/Cmd+Enter adds."
+          @keydown="addNoteWithShortcut"
+        />
+        <button type="button" class="ghost-button" @click="addNote">Add note</button>
       </div>
     </template>
   </section>

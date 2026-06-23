@@ -217,6 +217,7 @@ describe('useTodos', () => {
         repoPath: 'G:/Zhao/nu11cat/LocalTodo',
         relatedFiles: ['src/renderer/src/App.vue'],
         commands: ['npm test'],
+        notes: [],
         sensitive: false,
         createdAt: '2026-06-16T01:00:00.000Z',
         updatedAt: '2026-06-16T02:00:00.000Z'
@@ -257,6 +258,7 @@ describe('useTodos', () => {
         description: '',
         relatedFiles: [],
         commands: [],
+        notes: [],
         sensitive: false,
         createdAt: '2026-06-16T01:00:00.000Z',
         updatedAt: '2026-06-16T01:00:00.000Z'
@@ -271,6 +273,7 @@ describe('useTodos', () => {
         description: '',
         relatedFiles: [],
         commands: [],
+        notes: [],
         sensitive: false,
         createdAt: '2026-06-16T02:00:00.000Z',
         updatedAt: '2026-06-16T02:00:00.000Z'
@@ -442,6 +445,38 @@ describe('useTodos', () => {
 
     expect(todos.updateTodo('missing-task', { status: 'done' })).toBe(false)
     expect(todos.todos.value).toHaveLength(0)
+  })
+
+  it('appends activity log notes and removes them by id', async () => {
+    vi.setSystemTime(new Date('2026-06-16T05:00:00.000Z'))
+    const todos = useTodos()
+    await todos.loaded
+
+    todos.draftTitle.value = 'Track progress'
+    todos.addTodo()
+    const taskId = todos.todos.value[0].id
+
+    vi.setSystemTime(new Date('2026-06-16T06:00:00.000Z'))
+    expect(todos.addTaskNote(taskId, '  Started investigating login bug  ')).toBe(true)
+
+    expect(todos.todos.value[0].notes).toHaveLength(1)
+    expect(todos.todos.value[0].notes[0].content).toBe('Started investigating login bug')
+    expect(todos.todos.value[0].notes[0].createdAt).toBe('2026-06-16T06:00:00.000Z')
+    expect(todos.todos.value[0].updatedAt).toBe('2026-06-16T06:00:00.000Z')
+
+    expect(todos.addTaskNote(taskId, '   ')).toBe(false)
+    expect(todos.todos.value[0].notes).toHaveLength(1)
+
+    todos.addTaskNote(taskId, 'Blocked on token refresh')
+    expect(todos.todos.value[0].notes).toHaveLength(2)
+
+    const firstNoteId = todos.todos.value[0].notes[0].id
+    expect(todos.removeTaskNote(taskId, firstNoteId)).toBe(true)
+    expect(todos.todos.value[0].notes).toHaveLength(1)
+    expect(todos.todos.value[0].notes[0].content).toBe('Blocked on token refresh')
+
+    expect(todos.removeTaskNote(taskId, 'missing-note')).toBe(false)
+    expect(todos.addTaskNote('missing-task', 'note')).toBe(false)
   })
 
   it('moves tasks between computed lists when status is updated', async () => {
@@ -1047,6 +1082,7 @@ describe('useTodos', () => {
         repoPath: 'G:/Zhao/nu11cat/LocalTodo',
         relatedFiles: ['src/renderer/src/App.vue'],
         commands: ['npm test'],
+        notes: [],
         sensitive: false,
         createdAt: '2026-06-16T01:00:00.000Z',
         updatedAt: '2026-06-16T02:00:00.000Z'

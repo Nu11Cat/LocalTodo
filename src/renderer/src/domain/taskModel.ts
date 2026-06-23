@@ -4,6 +4,12 @@ export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent'
 
 export type TaskType = 'feature' | 'bug' | 'refactor' | 'research' | 'chore' | 'deploy' | 'review'
 
+export interface TaskNote {
+  id: string
+  createdAt: string
+  content: string
+}
+
 export interface Task {
   id: string
   title: string
@@ -16,6 +22,7 @@ export interface Task {
   repoPath?: string
   relatedFiles: string[]
   commands: string[]
+  notes: TaskNote[]
   createdAt: string
   updatedAt: string
   sensitive: boolean
@@ -47,6 +54,7 @@ export interface CreateTaskInput {
   repoPath?: string
   relatedFiles?: string[]
   commands?: string[]
+  notes?: TaskNote[]
   createdAt?: string
   updatedAt?: string
   sensitive?: boolean
@@ -66,6 +74,7 @@ export function createTask(input: CreateTaskInput): Task {
     description: input.description ?? '',
     relatedFiles: sanitizeTaskStringList(input.relatedFiles),
     commands: sanitizeTaskStringList(input.commands),
+    notes: sanitizeTaskNotes(input.notes),
     createdAt: input.createdAt ?? now,
     updatedAt: input.updatedAt ?? input.createdAt ?? now,
     sensitive: input.sensitive === true
@@ -84,6 +93,52 @@ export function createTask(input: CreateTaskInput): Task {
 
 export function createTaskId(): string {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
+}
+
+export function createTaskNote(content: string): TaskNote {
+  return {
+    id: createTaskId(),
+    createdAt: new Date().toISOString(),
+    content: content.trim()
+  }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
+}
+
+export function sanitizeTaskNotes(value: unknown): TaskNote[] {
+  if (!Array.isArray(value)) {
+    return []
+  }
+
+  const notes: TaskNote[] = []
+
+  for (const item of value) {
+    if (!isRecord(item) || typeof item.content !== 'string') {
+      continue
+    }
+
+    const content = item.content.trim()
+
+    if (!content) {
+      continue
+    }
+
+    const id = typeof item.id === 'string' && item.id.trim() ? item.id : createTaskId()
+    const createdAt =
+      typeof item.createdAt === 'string' && item.createdAt.trim()
+        ? item.createdAt
+        : new Date().toISOString()
+
+    notes.push({ id, createdAt, content: content.slice(0, 4000) })
+
+    if (notes.length >= 500) {
+      break
+    }
+  }
+
+  return notes
 }
 
 export function sanitizeOptionalTaskString(value: unknown, maxLength = 1000): string | undefined {

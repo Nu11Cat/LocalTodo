@@ -83,6 +83,7 @@ function formatTaskSummary(task: Task): string {
   lines.push(
     `- Related files: ${task.relatedFiles.length}`,
     `- Commands: ${task.commands.length}`,
+    `- Notes: ${task.notes.length}`,
     `- Created: ${task.createdAt}`,
     `- Updated: ${task.updatedAt}`
   )
@@ -208,6 +209,14 @@ export function generateTaskAiContext(task: Task): string {
 
   if (task.description.trim()) {
     sections.push('', '## Description', '', task.description.trim())
+  }
+
+  if (task.notes.length > 0) {
+    sections.push('', '## Activity Log')
+
+    for (const note of task.notes) {
+      sections.push('', `### ${note.createdAt}`, '', note.content)
+    }
   }
 
   sections.push('', '## Timestamps', '', `- Created: ${task.createdAt}`, `- Updated: ${task.updatedAt}`)

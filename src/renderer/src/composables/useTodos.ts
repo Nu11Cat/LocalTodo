@@ -14,6 +14,7 @@ import {
 } from '@renderer/domain/taskFilter'
 import {
   createTask,
+  createTaskNote,
   isTaskActive,
   isTaskDone,
   sanitizeOptionalTaskString,
@@ -345,6 +346,55 @@ export function useTodos() {
         ? sanitizeTaskStringList(patch.relatedFiles)
         : currentTodo.relatedFiles,
       commands: hasPatchKey('commands', patch) ? sanitizeTaskStringList(patch.commands) : currentTodo.commands,
+      id: currentTodo.id,
+      createdAt: currentTodo.createdAt,
+      updatedAt: new Date().toISOString()
+    })
+    return true
+  }
+
+  function addTaskNote(id: string, content: string): boolean {
+    const trimmedContent = content.trim()
+
+    if (!trimmedContent) {
+      return false
+    }
+
+    const todoIndex = todos.value.findIndex((item) => item.id === id)
+
+    if (todoIndex === -1) {
+      return false
+    }
+
+    const currentTodo = todos.value[todoIndex]
+
+    todos.value[todoIndex] = createTask({
+      ...currentTodo,
+      notes: [...currentTodo.notes, createTaskNote(trimmedContent)],
+      id: currentTodo.id,
+      createdAt: currentTodo.createdAt,
+      updatedAt: new Date().toISOString()
+    })
+    return true
+  }
+
+  function removeTaskNote(id: string, noteId: string): boolean {
+    const todoIndex = todos.value.findIndex((item) => item.id === id)
+
+    if (todoIndex === -1) {
+      return false
+    }
+
+    const currentTodo = todos.value[todoIndex]
+    const nextNotes = currentTodo.notes.filter((note) => note.id !== noteId)
+
+    if (nextNotes.length === currentTodo.notes.length) {
+      return false
+    }
+
+    todos.value[todoIndex] = createTask({
+      ...currentTodo,
+      notes: nextNotes,
       id: currentTodo.id,
       createdAt: currentTodo.createdAt,
       updatedAt: new Date().toISOString()
@@ -701,6 +751,8 @@ export function useTodos() {
     toggleTodo,
     selectTodo,
     updateTodo,
+    addTaskNote,
+    removeTaskNote,
     setFilterKeyword,
     toggleStatusFilter,
     togglePriorityFilter,

@@ -32,6 +32,8 @@ const {
   toggleTodo,
   selectTodo,
   updateTodo,
+  addTaskNote,
+  removeTaskNote,
   setFilterKeyword,
   toggleStatusFilter,
   togglePriorityFilter,
@@ -105,6 +107,18 @@ async function importSelectedFile(event: Event): Promise<void> {
 function updateSelectedTodo(patch: Parameters<typeof updateTodo>[1]): void {
   if (selectedTodo.value) {
     updateTodo(selectedTodo.value.id, patch)
+  }
+}
+
+function addNoteToSelectedTodo(content: string): void {
+  if (selectedTodo.value) {
+    addTaskNote(selectedTodo.value.id, content)
+  }
+}
+
+function removeNoteFromSelectedTodo(noteId: string): void {
+  if (selectedTodo.value) {
+    removeTaskNote(selectedTodo.value.id, noteId)
   }
 }
 
@@ -580,6 +594,8 @@ async function revealLastDir(): Promise<void> {
       :task="selectedTodo"
       :all-tasks="todos"
       @update="updateSelectedTodo"
+      @add-note="addNoteToSelectedTodo"
+      @remove-note="removeNoteFromSelectedTodo"
       @close="selectTodo(null)"
       @copy="copySelectedTodoContext"
     />

@@ -12,6 +12,7 @@ const baseTask: Task = {
   description: '',
   relatedFiles: [],
   commands: [],
+  notes: [],
   createdAt: '2026-06-16T01:00:00.000Z',
   updatedAt: '2026-06-16T02:00:00.000Z',
   sensitive: false
@@ -88,6 +89,41 @@ Generate copyable Markdown for AI assistants.
     expect(context).not.toContain('## Project')
     expect(context).not.toContain('## Repository')
     expect(context).not.toContain('## Description')
+  })
+
+  it('renders an activity log section in task order when notes exist', () => {
+    const context = generateTaskAiContext({
+      ...baseTask,
+      notes: [
+        { id: 'note-1', createdAt: '2026-06-16T03:00:00.000Z', content: 'Started investigating login bug' },
+        { id: 'note-2', createdAt: '2026-06-16T04:00:00.000Z', content: 'Blocked on token refresh' }
+      ]
+    })
+
+    expect(context).toContain('## Activity Log')
+    expect(context).toContain('### 2026-06-16T03:00:00.000Z\n\nStarted investigating login bug')
+    expect(context).toContain('### 2026-06-16T04:00:00.000Z\n\nBlocked on token refresh')
+    expect(context.indexOf('Started investigating login bug')).toBeLessThan(
+      context.indexOf('Blocked on token refresh')
+    )
+  })
+
+  it('omits the activity log section when there are no notes', () => {
+    expect(generateTaskAiContext(baseTask)).not.toContain('## Activity Log')
+  })
+
+  it('reports note counts in task summaries', () => {
+    const context = generateTasksAiContext([
+      {
+        ...baseTask,
+        notes: [
+          { id: 'note-1', createdAt: '2026-06-16T03:00:00.000Z', content: 'First' },
+          { id: 'note-2', createdAt: '2026-06-16T04:00:00.000Z', content: 'Second' }
+        ]
+      }
+    ])
+
+    expect(context.markdown).toContain('- Notes: 2')
   })
 
   it('generates Markdown for a task list', () => {

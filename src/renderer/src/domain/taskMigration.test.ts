@@ -23,6 +23,7 @@ describe('taskMigration', () => {
         description: '',
         relatedFiles: [],
         commands: [],
+        notes: [],
         sensitive: false,
         createdAt: '2026-06-16T01:00:00.000Z',
         updatedAt: '2026-06-16T01:00:00.000Z'
@@ -44,6 +45,10 @@ describe('taskMigration', () => {
         repoPath: ' G:/Zhao/nu11cat/LocalTodo ',
         relatedFiles: [' src/App.vue ', 123, 'src/App.vue'],
         commands: [' npm test ', null, 'npm test'],
+        notes: [
+          { id: 'note-1', createdAt: '2026-06-16T03:00:00.000Z', content: '  Logged progress  ' },
+          { id: 'note-2', createdAt: '2026-06-16T04:00:00.000Z', content: '  ' }
+        ],
         sensitive: true,
         createdAt: '2026-06-16T01:00:00.000Z',
         updatedAt: '2026-06-16T02:00:00.000Z'
@@ -63,6 +68,7 @@ describe('taskMigration', () => {
         repoPath: 'G:/Zhao/nu11cat/LocalTodo',
         relatedFiles: ['src/App.vue'],
         commands: ['npm test'],
+        notes: [{ id: 'note-1', createdAt: '2026-06-16T03:00:00.000Z', content: 'Logged progress' }],
         sensitive: true,
         createdAt: '2026-06-16T01:00:00.000Z',
         updatedAt: '2026-06-16T02:00:00.000Z'
@@ -94,6 +100,7 @@ describe('taskMigration', () => {
         description: '',
         relatedFiles: [],
         commands: [],
+        notes: [],
         sensitive: false,
         createdAt: '2026-06-16T02:00:00.000Z',
         updatedAt: '2026-06-16T02:00:00.000Z'

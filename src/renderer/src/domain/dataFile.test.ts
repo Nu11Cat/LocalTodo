@@ -12,6 +12,7 @@ const task: Task = {
   description: '',
   relatedFiles: [],
   commands: [],
+  notes: [],
   sensitive: false,
   createdAt: '2026-06-16T01:00:00.000Z',
   updatedAt: '2026-06-16T02:00:00.000Z'
@@ -93,6 +94,7 @@ describe('dataFile', () => {
         description: '',
         relatedFiles: [],
         commands: [],
+        notes: [],
         sensitive: false,
         createdAt: '2026-06-16T01:00:00.000Z',
         updatedAt: '2026-06-16T01:00:00.000Z'

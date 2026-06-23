@@ -71,6 +71,7 @@ function normalizeTask(value: unknown): Task | null {
     commands: Array.isArray(value.commands)
       ? value.commands.filter((command) => typeof command === 'string')
       : [],
+    notes: Array.isArray(value.notes) ? value.notes : [],
     createdAt: value.createdAt,
     updatedAt: typeof value.updatedAt === 'string' ? value.updatedAt : value.createdAt,
     sensitive: typeof value.sensitive === 'boolean' ? value.sensitive : undefined

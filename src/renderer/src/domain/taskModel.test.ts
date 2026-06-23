@@ -1,5 +1,12 @@
 import { describe, expect, it, vi } from 'vitest'
-import { createTask, isTaskActive, isTaskDone, toggleTaskDone } from './taskModel'
+import {
+  createTask,
+  createTaskNote,
+  isTaskActive,
+  isTaskDone,
+  sanitizeTaskNotes,
+  toggleTaskDone
+} from './taskModel'
 
 describe('taskModel', () => {
   it('creates tasks with MVP defaults', () => {
@@ -14,6 +21,7 @@ describe('taskModel', () => {
       description: '',
       relatedFiles: [],
       commands: [],
+      notes: [],
       sensitive: false,
       createdAt: '2026-06-16T01:00:00.000Z',
       updatedAt: '2026-06-16T01:00:00.000Z'
@@ -49,6 +57,45 @@ describe('taskModel', () => {
 
     expect(task.projectName).toBeUndefined()
     expect(task.repoPath).toBeUndefined()
+  })
+
+  it('sanitizes notes, dropping blank content and preserving valid entries', () => {
+    const task = createTask({
+      title: 'With notes',
+      notes: [
+        { id: 'note-1', createdAt: '2026-06-16T03:00:00.000Z', content: '  Did the thing  ' },
+        { id: 'note-2', createdAt: '2026-06-16T04:00:00.000Z', content: '   ' },
+        { content: 'No id or timestamp' }
+      ] as never
+    })
+
+    expect(task.notes).toHaveLength(2)
+    expect(task.notes[0]).toMatchObject({
+      id: 'note-1',
+      createdAt: '2026-06-16T03:00:00.000Z',
+      content: 'Did the thing'
+    })
+    expect(task.notes[1].content).toBe('No id or timestamp')
+    expect(task.notes[1].id).toBeTruthy()
+    expect(task.notes[1].createdAt).toBeTruthy()
+  })
+
+  it('ignores non-array note input', () => {
+    expect(sanitizeTaskNotes('nope')).toEqual([])
+    expect(sanitizeTaskNotes(undefined)).toEqual([])
+  })
+
+  it('creates a trimmed note with id and timestamp', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-06-16T05:00:00.000Z'))
+
+    const note = createTaskNote('  next step: review refresh logic  ')
+
+    expect(note.content).toBe('next step: review refresh logic')
+    expect(note.createdAt).toBe('2026-06-16T05:00:00.000Z')
+    expect(note.id).toBeTruthy()
+
+    vi.useRealTimers()
   })
 
   it('detects active and completed tasks', () => {

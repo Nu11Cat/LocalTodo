@@ -8,7 +8,8 @@ import type {
   OpenExportedAiContextResult,
   Platform,
   RevealExportedAiContextResult,
-  SaveDataResult
+  SaveDataResult,
+  SelectDirectoryResult
 } from '../../preload/index.d'
 
 declare global {
@@ -24,6 +25,7 @@ declare global {
       loadData: () => Promise<LoadDataResult>
       saveData: (payload: string) => Promise<SaveDataResult>
       createImportRestorePoint: (payload: string) => Promise<CreateImportRestorePointResult>
+      selectDirectory: () => Promise<SelectDirectoryResult>
     }
   }
 }

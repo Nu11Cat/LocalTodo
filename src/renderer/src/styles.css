@@ -368,6 +368,37 @@ h2 {
   font-weight: 500;
 }
 
+.repo-path-input {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.repo-path-input input {
+  flex: 1;
+}
+
+.repo-path-warning {
+  display: block;
+  margin-top: 4px;
+  color: #b45309;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.repo-path-suggestion {
+  margin-top: 6px;
+  align-self: flex-start;
+  border: 1px dashed #94a3b8;
+  border-radius: 8px;
+  padding: 4px 10px;
+  color: #1d4ed8;
+  background: #f1f5f9;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
 .tag-list {
   flex-wrap: wrap;
   gap: 8px;

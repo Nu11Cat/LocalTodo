@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import {
   taskPriorities,
   taskStatuses,
@@ -9,6 +9,7 @@ import {
   type TaskStatus,
   type TaskType
 } from '@renderer/domain/taskModel'
+import { isAbsoluteRepoPath } from '@renderer/domain/repoPath'
 
 type TaskPatch = Partial<{
   status: TaskStatus
@@ -23,9 +24,15 @@ type TaskPatch = Partial<{
   sensitive: boolean
 }>
 
-const props = defineProps<{
-  task: Task | null
-}>()
+const props = withDefaults(
+  defineProps<{
+    task: Task | null
+    allTasks?: Task[]
+  }>(),
+  {
+    allTasks: () => []
+  }
+)
 
 const emit = defineEmits<{
   update: [patch: TaskPatch]
@@ -90,6 +97,80 @@ function saveRepoPath(): void {
 
   if (nextRepoPath !== (props.task.repoPath ?? '')) {
     emit('update', { repoPath: nextRepoPath || null })
+  }
+}
+
+const canSelectDirectory = computed(() => typeof window.api?.selectDirectory === 'function')
+
+const showRepoPathWarning = computed(() => {
+  const value = repoPathDraft.value.trim()
+
+  return value.length > 0 && !isAbsoluteRepoPath(value)
+})
+
+const repoPathSuggestion = computed<string | null>(() => {
+  const projectName = props.task?.projectName?.trim()
+
+  if (!projectName) {
+    return null
+  }
+
+  const countsByPath = new Map<string, number>()
+
+  for (const task of props.allTasks) {
+    if (task.id === props.task?.id) {
+      continue
+    }
+
+    if ((task.projectName ?? '').trim() !== projectName) {
+      continue
+    }
+
+    const repoPath = task.repoPath?.trim()
+
+    if (!repoPath) {
+      continue
+    }
+
+    countsByPath.set(repoPath, (countsByPath.get(repoPath) ?? 0) + 1)
+  }
+
+  let suggestion: string | null = null
+  let highestCount = 0
+
+  for (const [repoPath, count] of countsByPath) {
+    if (count > highestCount) {
+      highestCount = count
+      suggestion = repoPath
+    }
+  }
+
+  if (suggestion === null || suggestion === repoPathDraft.value.trim()) {
+    return null
+  }
+
+  return suggestion
+})
+
+function applyRepoPathSuggestion(): void {
+  if (repoPathSuggestion.value === null) {
+    return
+  }
+
+  repoPathDraft.value = repoPathSuggestion.value
+  saveRepoPath()
+}
+
+async function selectRepoPathDirectory(): Promise<void> {
+  if (!window.api?.selectDirectory) {
+    return
+  }
+
+  const result = await window.api.selectDirectory()
+
+  if (result.status === 'selected') {
+    repoPathDraft.value = result.dirPath
+    saveRepoPath()
   }
 }
 
@@ -260,14 +341,35 @@ function saveDescriptionWithShortcut(event: KeyboardEvent): void {
 
         <label>
           <span>Repository path</span>
-          <input
-            v-model="repoPathDraft"
-            type="text"
-            maxlength="1000"
-            placeholder="G:/path/to/repo"
-            @keydown.enter.prevent="saveRepoPath"
-            @blur="saveRepoPath"
-          />
+          <div class="repo-path-input">
+            <input
+              v-model="repoPathDraft"
+              type="text"
+              maxlength="1000"
+              placeholder="G:/path/to/repo"
+              @keydown.enter.prevent="saveRepoPath"
+              @blur="saveRepoPath"
+            />
+            <button
+              v-if="canSelectDirectory"
+              type="button"
+              class="ghost-button"
+              @click="selectRepoPathDirectory"
+            >
+              Browse…
+            </button>
+          </div>
+          <small v-if="showRepoPathWarning" class="repo-path-warning">
+            Repository path should be an absolute path (e.g. G:/path/to/repo).
+          </small>
+          <button
+            v-if="repoPathSuggestion"
+            type="button"
+            class="repo-path-suggestion"
+            @click="applyRepoPathSuggestion"
+          >
+            Use {{ repoPathSuggestion }}
+          </button>
         </label>
       </div>
 

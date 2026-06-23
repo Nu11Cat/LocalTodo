@@ -14,6 +14,11 @@ export type ExportProjectAiContextResult =
 export type OpenExportedAiContextResult = { status: 'opened' } | { status: 'error'; message: string }
 export type RevealExportedAiContextResult = { status: 'revealed' } | { status: 'error'; message: string }
 
+export type SelectDirectoryResult =
+  | { status: 'selected'; dirPath: string }
+  | { status: 'cancelled' }
+  | { status: 'error'; message: string }
+
 export type LoadDataResult =
   | { status: 'ok'; data: string }
   | { status: 'missing' }
@@ -68,6 +73,7 @@ declare global {
       loadData: () => Promise<LoadDataResult>
       saveData: (payload: string) => Promise<SaveDataResult>
       createImportRestorePoint: (payload: string) => Promise<CreateImportRestorePointResult>
+      selectDirectory: () => Promise<SelectDirectoryResult>
     }
   }
 }

@@ -43,7 +43,8 @@ function createMockApi() {
     createImportRestorePoint: vi.fn().mockResolvedValue({
       status: 'written',
       filePath: 'G:/LocalTodo/restore-points/localtodo-before-import.json'
-    })
+    }),
+    selectDirectory: vi.fn().mockResolvedValue({ status: 'selected', dirPath: 'G:/picked/repo' })
   }
 }
 

@@ -17,6 +17,11 @@ type ExportProjectAiContextResult =
 type OpenExportedAiContextResult = { status: 'opened' } | { status: 'error'; message: string }
 type RevealExportedAiContextResult = { status: 'revealed' } | { status: 'error'; message: string }
 
+type SelectDirectoryResult =
+  | { status: 'selected'; dirPath: string }
+  | { status: 'cancelled' }
+  | { status: 'error'; message: string }
+
 type LoadDataResult =
   | { status: 'ok'; data: string }
   | { status: 'missing' }
@@ -70,6 +75,7 @@ const exportLocalTodoProjectChannel = 'localtodo:exportProject'
 const loadDataChannel = 'storage:loadData'
 const saveDataChannel = 'storage:saveData'
 const createImportRestorePointChannel = 'storage:createImportRestorePoint'
+const selectDirectoryChannel = 'dialog:selectDirectory'
 const exportedPathsByWebContents = new WeakMap<WebContents, Set<string>>()
 
 function sanitizeFileName(value: unknown): string {
@@ -194,6 +200,32 @@ function registerExportedFileActionHandlers(): void {
       }
     }
   )
+}
+
+function registerDialogHandlers(): void {
+  ipcMain.handle(selectDirectoryChannel, async (event): Promise<SelectDirectoryResult> => {
+    try {
+      const ownerWindow = BrowserWindow.fromWebContents(event.sender)
+      const openDialogOptions = {
+        title: 'Select project directory',
+        properties: ['openDirectory' as const]
+      }
+      const result = ownerWindow
+        ? await dialog.showOpenDialog(ownerWindow, openDialogOptions)
+        : await dialog.showOpenDialog(openDialogOptions)
+
+      if (result.canceled || result.filePaths.length === 0) {
+        return { status: 'cancelled' }
+      }
+
+      return { status: 'selected', dirPath: result.filePaths[0] }
+    } catch (error) {
+      return {
+        status: 'error',
+        message: error instanceof Error ? error.message : 'Failed to select directory.'
+      }
+    }
+  })
 }
 
 const localTodoGitignoreEntries = [
@@ -571,6 +603,7 @@ app.whenReady().then(() => {
   registerAiContextExportHandler()
   registerExportedFileActionHandlers()
   registerLocalTodoProjectExportHandler()
+  registerDialogHandlers()
 
   createWindow()
 

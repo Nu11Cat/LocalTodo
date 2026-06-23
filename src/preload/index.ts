@@ -8,7 +8,8 @@ import type {
   LoadDataResult,
   OpenExportedAiContextResult,
   RevealExportedAiContextResult,
-  SaveDataResult
+  SaveDataResult,
+  SelectDirectoryResult
 } from './index.d'
 
 const api = {
@@ -27,7 +28,9 @@ const api = {
   saveData: (payload: string): Promise<SaveDataResult> =>
     ipcRenderer.invoke('storage:saveData', payload),
   createImportRestorePoint: (payload: string): Promise<CreateImportRestorePointResult> =>
-    ipcRenderer.invoke('storage:createImportRestorePoint', payload)
+    ipcRenderer.invoke('storage:createImportRestorePoint', payload),
+  selectDirectory: (): Promise<SelectDirectoryResult> =>
+    ipcRenderer.invoke('dialog:selectDirectory')
 }
 
 if (process.contextIsolated) {

@@ -549,6 +549,7 @@ async function revealLastDir(): Promise<void> {
 
     <TaskDetailPanel
       :task="selectedTodo"
+      :all-tasks="todos"
       @update="updateSelectedTodo"
       @close="selectTodo(null)"
       @copy="copySelectedTodoContext"

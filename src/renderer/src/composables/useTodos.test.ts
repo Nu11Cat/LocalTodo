@@ -1717,4 +1717,93 @@ describe('useTodos data file info', () => {
       message: 'Opening the data file is not supported here.'
     })
   })
+
+  it('saves the current task as a custom template appended after the built-ins', async () => {
+    const todos = useTodos()
+    await todos.loaded
+
+    const builtInCount = todos.availableTemplates.value.length
+
+    todos.draftTitle.value = 'Source task'
+    todos.addTodo()
+    const sourceId = todos.todos.value[0].id
+    todos.updateTodo(sourceId, {
+      type: 'bug',
+      priority: 'high',
+      description: 'Reproduce and fix',
+      commands: ['npm test'],
+      tags: ['bug']
+    })
+
+    const source = todos.todos.value.find((task) => task.id === sourceId)!
+    expect(todos.saveTaskAsTemplate('My bug flow', source)).toBe(true)
+
+    expect(todos.availableTemplates.value).toHaveLength(builtInCount + 1)
+    const saved = todos.availableTemplates.value[todos.availableTemplates.value.length - 1]
+    expect(saved.label).toBe('My bug flow')
+    expect(saved.type).toBe('bug')
+    expect(saved.commands).toEqual(['npm test'])
+    expect(saved.tags).toEqual(['bug'])
+  })
+
+  it('does not save a template when the name is blank', async () => {
+    const todos = useTodos()
+    await todos.loaded
+
+    const builtInCount = todos.availableTemplates.value.length
+
+    todos.draftTitle.value = 'Source task'
+    todos.addTodo()
+    const source = todos.todos.value[0]
+
+    expect(todos.saveTaskAsTemplate('   ', source)).toBe(false)
+    expect(todos.availableTemplates.value).toHaveLength(builtInCount)
+  })
+
+  it('prefills a new task from a saved custom template', async () => {
+    const todos = useTodos()
+    await todos.loaded
+
+    todos.draftTitle.value = 'Source task'
+    todos.addTodo()
+    const source = todos.todos.value[0]
+    todos.updateTodo(source.id, {
+      type: 'feature',
+      priority: 'low',
+      description: 'Template body',
+      commands: ['npm run build'],
+      tags: ['feature']
+    })
+
+    todos.saveTaskAsTemplate('Reusable', todos.todos.value.find((task) => task.id === source.id)!)
+    const saved = todos.customTemplates.value[0]
+    todos.selectedTemplateId.value = saved.id
+
+    todos.draftTitle.value = 'New from template'
+    todos.addTodo()
+
+    const created = todos.todos.value[0]
+    expect(created.title).toBe('New from template')
+    expect(created.type).toBe('feature')
+    expect(created.description).toBe('Template body')
+    expect(created.commands).toEqual(['npm run build'])
+    expect(created.tags).toEqual(['feature'])
+  })
+
+  it('removes a custom template and resets the selection when it was selected', async () => {
+    const todos = useTodos()
+    await todos.loaded
+
+    todos.draftTitle.value = 'Source task'
+    todos.addTodo()
+    todos.saveTaskAsTemplate('Throwaway', todos.todos.value[0])
+    const saved = todos.customTemplates.value[0]
+    todos.selectedTemplateId.value = saved.id
+
+    todos.deleteCustomTemplate(saved.id)
+
+    expect(todos.customTemplates.value).toHaveLength(0)
+    expect(todos.availableTemplates.value.some((template) => template.id === saved.id)).toBe(false)
+    expect(todos.selectedTemplateId.value).toBe('blank')
+  })
 })

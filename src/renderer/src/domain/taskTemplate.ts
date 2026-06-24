@@ -3,7 +3,9 @@ import type { CreateTaskInput, TaskPriority, TaskType } from '@renderer/domain/t
 export type TaskTemplateId = 'blank' | 'bug' | 'feature' | 'refactor' | 'release'
 
 export interface TaskTemplate {
-  id: TaskTemplateId
+  // Built-in templates use the TaskTemplateId literals; custom templates supply a
+  // generated string id, so this is widened to string to cover both.
+  id: string
   label: string
   type?: TaskType
   priority?: TaskPriority

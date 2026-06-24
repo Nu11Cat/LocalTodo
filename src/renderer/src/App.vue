@@ -4,7 +4,6 @@ import ProjectDashboard from './components/ProjectDashboard.vue'
 import TaskDetailPanel from './components/TaskDetailPanel.vue'
 import { useTodos } from './composables/useTodos'
 import { taskPriorities, taskStatuses, taskTypes } from './domain/taskModel'
-import { taskTemplates } from './domain/taskTemplate'
 import type { TaskSortKey } from './domain/taskSort'
 
 const sortOptions: { value: TaskSortKey; label: string }[] = [
@@ -24,6 +23,10 @@ const {
   todos,
   draftTitle,
   selectedTemplateId,
+  availableTemplates,
+  customTemplates,
+  saveTaskAsTemplate,
+  deleteCustomTemplate,
   selectedTodoId,
   filterState,
   sortState,
@@ -84,6 +87,10 @@ const {
 } = useTodos()
 
 const todosSensitiveCount = computed(() => todos.value.filter((todo) => todo.sensitive).length)
+
+const isCustomTemplateSelected = computed(() =>
+  customTemplates.value.some((template) => template.id === selectedTemplateId.value)
+)
 
 function formatBytes(size: number): string {
   if (size < 1024) {
@@ -320,6 +327,39 @@ async function setProjectRepoPathFromDashboard(key: string): Promise<void> {
   projectContextExportMessage.value = `Set repo path for ${changed} task${changed === 1 ? '' : 's'}.`
 }
 
+function saveSelectedTaskAsTemplate(): void {
+  const task = selectedTodo.value
+
+  if (!task) {
+    return
+  }
+
+  const name = window.prompt('Template name?')
+
+  if (!name?.trim()) {
+    return
+  }
+
+  if (saveTaskAsTemplate(name, task)) {
+    projectContextExportMessage.value = `Saved template "${name.trim()}".`
+  }
+}
+
+function deleteSelectedTemplate(): void {
+  const template = customTemplates.value.find((item) => item.id === selectedTemplateId.value)
+
+  if (!template) {
+    return
+  }
+
+  if (!window.confirm(`Delete template "${template.name}"?`)) {
+    return
+  }
+
+  deleteCustomTemplate(template.id)
+  projectContextExportMessage.value = `Deleted template "${template.name}".`
+}
+
 async function handleProjectContextExport(
   exporter: (options?: { includeSensitive?: boolean }) => ReturnType<typeof exportProjectAiContext>,
   sensitiveCount = 0
@@ -491,10 +531,19 @@ async function revealLastDir(): Promise<void> {
         />
         <label class="sr-only" for="todo-template">Task template</label>
         <select id="todo-template" v-model="selectedTemplateId" :disabled="!isLoaded">
-          <option v-for="template in taskTemplates" :key="template.id" :value="template.id">
+          <option v-for="template in availableTemplates" :key="template.id" :value="template.id">
             {{ template.label }}
           </option>
         </select>
+        <button
+          v-if="isCustomTemplateSelected"
+          type="button"
+          class="ghost-button"
+          :disabled="!isLoaded"
+          @click="deleteSelectedTemplate"
+        >
+          Delete template
+        </button>
         <button type="submit" :disabled="!isLoaded">Add</button>
       </form>
 
@@ -817,6 +866,7 @@ async function revealLastDir(): Promise<void> {
       @remove-note="removeNoteFromSelectedTodo"
       @close="selectTodo(null)"
       @copy="copySelectedTodoContext"
+      @save-as-template="saveSelectedTaskAsTemplate"
     />
   </main>
 </template>

@@ -43,12 +43,21 @@ import { findProjectSummary, summarizeProjects, unassignedProjectKey } from '@re
 import { migrateStoredTasks } from '@renderer/domain/taskMigration'
 import {
   buildTaskInputFromTemplate,
-  findTaskTemplate,
-  type TaskTemplateId
+  taskTemplates
 } from '@renderer/domain/taskTemplate'
+import {
+  createCustomTemplateFromTask,
+  parseCustomTemplates,
+  removeCustomTemplate,
+  serializeCustomTemplates,
+  toTaskTemplate,
+  upsertCustomTemplate,
+  type CustomTemplate
+} from '@renderer/domain/customTemplate'
 
 const storageKey = 'localtodo.todos'
 const savedViewsStorageKey = 'localtodo.savedViews'
+const customTemplatesStorageKey = 'localtodo.customTemplates'
 const projectContextFileName = 'AI_CONTEXT.md'
 const saveDebounceMs = 300
 
@@ -205,6 +214,24 @@ function persistSavedViews(views: SavedView[]): void {
   }
 }
 
+// Custom templates, like saved views, are a local UI preference that always lives
+// in localStorage and never goes through the data file / window.api persistence path.
+function loadCustomTemplates(): CustomTemplate[] {
+  try {
+    return parseCustomTemplates(JSON.parse(localStorage.getItem(customTemplatesStorageKey) ?? 'null'))
+  } catch {
+    return []
+  }
+}
+
+function persistCustomTemplates(templates: CustomTemplate[]): void {
+  try {
+    localStorage.setItem(customTemplatesStorageKey, serializeCustomTemplates(templates))
+  } catch {
+    // Ignore localStorage persistence errors.
+  }
+}
+
 async function loadTodos(): Promise<LoadTodosResult> {
   if (!window.api?.loadData) {
     return { status: 'loaded', tasks: loadLegacyTodos() }
@@ -263,11 +290,12 @@ function debounceSave(callback: () => void, delayMs: number): () => void {
 export function useTodos() {
   const todos = ref<Task[]>([])
   const draftTitle = ref('')
-  const selectedTemplateId = ref<TaskTemplateId>('blank')
+  const selectedTemplateId = ref<string>('blank')
   const selectedTodoId = ref<string | null>(null)
   const filterState = ref<TaskFilterState>(createEmptyTaskFilterState())
   const sortState = ref<TaskSortState>(createDefaultTaskSortState())
   const savedViews = ref<SavedView[]>(loadSavedViews())
+  const customTemplates = ref<CustomTemplate[]>(loadCustomTemplates())
   const dataFileInfo = ref<DataFileInfo | null>(null)
   const isLoaded = ref(false)
   const loadErrorMessage = ref('')
@@ -394,6 +422,11 @@ export function useTodos() {
   const completedTodos = computed(() => filteredTodos.value.filter(isTaskDone))
   const totalActiveCount = computed(() => todos.value.filter(isTaskActive).length)
   const totalCompletedCount = computed(() => todos.value.filter(isTaskDone).length)
+  // New-task dropdown source: built-in templates first, then user-defined ones.
+  const availableTemplates = computed(() => [
+    ...taskTemplates,
+    ...customTemplates.value.map(toTaskTemplate)
+  ])
   const hasActiveFilters = computed(() => !isTaskFilterStateEmpty(filterState.value))
   const hasNonDefaultSort = computed(() => sortState.value.key !== 'manual')
   // Drives the "Clear filters" entry: visible when filters OR sort deviate from default.
@@ -437,7 +470,7 @@ export function useTodos() {
       return
     }
 
-    const template = findTaskTemplate(selectedTemplateId.value)
+    const template = availableTemplates.value.find((item) => item.id === selectedTemplateId.value)
     const input = template ? buildTaskInputFromTemplate(template, title) : { title }
     const newTask = createTask(input)
 
@@ -687,6 +720,29 @@ export function useTodos() {
 
   function deleteSavedView(id: string): void {
     savedViews.value = removeSavedView(savedViews.value, id)
+  }
+
+  function saveTaskAsTemplate(name: string, task: Task): boolean {
+    const trimmedName = name.trim()
+
+    if (!trimmedName) {
+      return false
+    }
+
+    customTemplates.value = upsertCustomTemplate(
+      customTemplates.value,
+      createCustomTemplateFromTask(trimmedName, task)
+    )
+    return true
+  }
+
+  function deleteCustomTemplate(id: string): void {
+    customTemplates.value = removeCustomTemplate(customTemplates.value, id)
+
+    // The deleted template can no longer back the new-task dropdown; fall back to Blank.
+    if (selectedTemplateId.value === id) {
+      selectedTemplateId.value = 'blank'
+    }
   }
 
   async function copyTaskAiContext(
@@ -960,10 +1016,22 @@ export function useTodos() {
     { deep: true }
   )
 
+  watch(
+    customTemplates,
+    (templates) => {
+      persistCustomTemplates(templates)
+    },
+    { deep: true }
+  )
+
   return {
     todos,
     draftTitle,
     selectedTemplateId,
+    availableTemplates,
+    customTemplates,
+    saveTaskAsTemplate,
+    deleteCustomTemplate,
     selectedTodoId,
     filterState,
     sortState,

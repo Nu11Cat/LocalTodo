@@ -40,6 +40,7 @@ const emit = defineEmits<{
   removeNote: [noteId: string]
   close: []
   copy: []
+  saveAsTemplate: []
 }>()
 
 const projectNameDraft = ref('')
@@ -325,6 +326,9 @@ function formatNoteTimestamp(value: string): string {
         </div>
         <div class="panel-actions">
           <button type="button" class="ghost-button" @click="emit('copy')">Copy AI Context</button>
+          <button type="button" class="ghost-button" @click="emit('saveAsTemplate')">
+            Save as template
+          </button>
           <button type="button" class="ghost-button" @click="emit('close')">Close</button>
         </div>
       </div>

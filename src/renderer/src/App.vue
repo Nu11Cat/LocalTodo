@@ -16,6 +16,7 @@ const sortOptions: { value: TaskSortKey; label: string }[] = [
 
 const fileInput = ref<HTMLInputElement | null>(null)
 const projectContextExportMessage = ref('')
+const savedViewName = ref('')
 const lastExportedFilePath = ref<string | null>(null)
 const lastExportedAiContextFilePath = ref<string | null>(null)
 
@@ -26,6 +27,7 @@ const {
   selectedTodoId,
   filterState,
   sortState,
+  savedViews,
   quickViews,
   isLoaded,
   loadErrorMessage,
@@ -58,6 +60,9 @@ const {
   applyQuickView,
   setProjectFilter,
   resetFilters,
+  saveCurrentView,
+  applySavedView,
+  deleteSavedView,
   removeTodo,
   clearCompleted,
   copyTaskAiContext,
@@ -170,6 +175,27 @@ function toggleSortDirection(): void {
     key: sortState.value.key,
     direction: sortState.value.direction === 'asc' ? 'desc' : 'asc'
   })
+}
+
+function saveCurrentFilterView(): void {
+  const name = savedViewName.value.trim()
+
+  if (!saveCurrentView(name)) {
+    return
+  }
+
+  savedViewName.value = ''
+  projectContextExportMessage.value = `Saved view "${name}".`
+}
+
+function deleteSavedFilterView(id: string, name: string): void {
+  const confirmed = window.confirm(`Delete saved view "${name}"?`)
+
+  if (!confirmed) {
+    return
+  }
+
+  deleteSavedView(id)
 }
 
 function addNoteToSelectedTodo(content: string): void {
@@ -545,6 +571,41 @@ async function revealLastDir(): Promise<void> {
           @click="applyQuickView(quickView.id)"
         >
           {{ quickView.label }}
+        </button>
+      </div>
+
+      <div class="filter-row" aria-label="Saved views">
+        <span>Saved views</span>
+        <span v-for="view in savedViews" :key="view.id" class="saved-view-chip">
+          <button type="button" class="filter-chip saved-view-apply" @click="applySavedView(view.id)">
+            {{ view.name }}
+          </button>
+          <button
+            type="button"
+            class="saved-view-remove"
+            :aria-label="`Delete saved view ${view.name}`"
+            @click="deleteSavedFilterView(view.id, view.name)"
+          >
+            ×
+          </button>
+        </span>
+        <label class="sr-only" for="saved-view-name">Saved view name</label>
+        <input
+          id="saved-view-name"
+          v-model="savedViewName"
+          class="saved-view-input"
+          type="text"
+          autocomplete="off"
+          placeholder="Name this view"
+          @keyup.enter="saveCurrentFilterView"
+        />
+        <button
+          type="button"
+          class="filter-chip"
+          :disabled="!savedViewName.trim()"
+          @click="saveCurrentFilterView"
+        >
+          Save view
         </button>
       </div>
 

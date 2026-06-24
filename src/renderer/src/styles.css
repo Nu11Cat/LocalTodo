@@ -97,6 +97,7 @@ h2 {
 .todo-form select,
 .filter-search,
 .filter-row select,
+.saved-view-input,
 .detail-field input,
 .field-grid select,
 .detail-field textarea {
@@ -466,6 +467,42 @@ h2 {
 .filter-chip.is-active {
   color: #fff;
   background: #2563eb;
+}
+
+.filter-chip:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.saved-view-chip {
+  display: inline-flex;
+  align-items: stretch;
+  border-radius: 999px;
+  overflow: hidden;
+  background: #e2e8f0;
+}
+
+.saved-view-chip .saved-view-apply {
+  border-radius: 999px 0 0 999px;
+}
+
+.saved-view-remove {
+  border: 0;
+  padding: 6px 10px;
+  color: #475569;
+  background: #cbd5e1;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.saved-view-remove:hover {
+  color: #fff;
+  background: #ef4444;
+}
+
+.saved-view-input {
+  padding: 8px 12px;
 }
 
 .note-list {

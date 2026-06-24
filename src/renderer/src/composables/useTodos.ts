@@ -19,6 +19,14 @@ import {
   type TaskSortState
 } from '@renderer/domain/taskSort'
 import {
+  createSavedView,
+  parseSavedViews,
+  removeSavedView,
+  serializeSavedViews,
+  upsertSavedView,
+  type SavedView
+} from '@renderer/domain/savedView'
+import {
   createTask,
   createTaskNote,
   isTaskActive,
@@ -40,6 +48,7 @@ import {
 } from '@renderer/domain/taskTemplate'
 
 const storageKey = 'localtodo.todos'
+const savedViewsStorageKey = 'localtodo.savedViews'
 const projectContextFileName = 'AI_CONTEXT.md'
 const saveDebounceMs = 300
 
@@ -178,6 +187,24 @@ function removeLegacyTodos(): void {
   }
 }
 
+// Saved views are a local UI preference; they always live in localStorage and
+// never go through the data file / window.api persistence path.
+function loadSavedViews(): SavedView[] {
+  try {
+    return parseSavedViews(JSON.parse(localStorage.getItem(savedViewsStorageKey) ?? 'null'))
+  } catch {
+    return []
+  }
+}
+
+function persistSavedViews(views: SavedView[]): void {
+  try {
+    localStorage.setItem(savedViewsStorageKey, serializeSavedViews(views))
+  } catch {
+    // Ignore localStorage persistence errors.
+  }
+}
+
 async function loadTodos(): Promise<LoadTodosResult> {
   if (!window.api?.loadData) {
     return { status: 'loaded', tasks: loadLegacyTodos() }
@@ -240,6 +267,7 @@ export function useTodos() {
   const selectedTodoId = ref<string | null>(null)
   const filterState = ref<TaskFilterState>(createEmptyTaskFilterState())
   const sortState = ref<TaskSortState>(createDefaultTaskSortState())
+  const savedViews = ref<SavedView[]>(loadSavedViews())
   const dataFileInfo = ref<DataFileInfo | null>(null)
   const isLoaded = ref(false)
   const loadErrorMessage = ref('')
@@ -607,6 +635,44 @@ export function useTodos() {
     sortState.value = createDefaultTaskSortState()
   }
 
+  function saveCurrentView(name: string): boolean {
+    const trimmedName = name.trim()
+
+    if (!trimmedName) {
+      return false
+    }
+
+    savedViews.value = upsertSavedView(
+      savedViews.value,
+      createSavedView(trimmedName, filterState.value, sortState.value)
+    )
+    return true
+  }
+
+  function applySavedView(id: string): boolean {
+    const view = savedViews.value.find((item) => item.id === id)
+
+    if (!view) {
+      return false
+    }
+
+    // Clone so later filter mutations cannot reach into the stored view's arrays.
+    filterState.value = {
+      ...view.filter,
+      statuses: [...view.filter.statuses],
+      priorities: [...view.filter.priorities],
+      types: [...view.filter.types],
+      tags: [...view.filter.tags],
+      projects: [...view.filter.projects]
+    }
+    sortState.value = { ...view.sort }
+    return true
+  }
+
+  function deleteSavedView(id: string): void {
+    savedViews.value = removeSavedView(savedViews.value, id)
+  }
+
   async function copyTaskAiContext(
     id: string,
     options: SensitiveTaskActionOptions = {}
@@ -870,6 +936,14 @@ export function useTodos() {
     { deep: true }
   )
 
+  watch(
+    savedViews,
+    (views) => {
+      persistSavedViews(views)
+    },
+    { deep: true }
+  )
+
   return {
     todos,
     draftTitle,
@@ -877,6 +951,7 @@ export function useTodos() {
     selectedTodoId,
     filterState,
     sortState,
+    savedViews,
     quickViews,
     dataFileInfo,
     isLoaded,
@@ -912,6 +987,9 @@ export function useTodos() {
     applyQuickView,
     setProjectFilter,
     resetFilters,
+    saveCurrentView,
+    applySavedView,
+    deleteSavedView,
     removeTodo,
     clearCompleted,
     copyTaskAiContext,

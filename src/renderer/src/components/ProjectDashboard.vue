@@ -1,5 +1,8 @@
 <script setup lang="ts">
 import type { ProjectSummary } from '../domain/projectSummary'
+import { useLocale } from '../composables/useLocale'
+
+const { t } = useLocale()
 
 const props = defineProps<{
   summaries: ProjectSummary[]
@@ -34,6 +37,12 @@ function hasDefaultCommands(summary: ProjectSummary): boolean {
   return props.defaultCommandKeys?.includes(summary.key) ?? false
 }
 
+// summary.label is the canonical English fallback ("(No project)") for an
+// unassigned group; localize that label here without mutating stored data.
+function projectLabel(summary: ProjectSummary): string {
+  return summary.projectName || summary.repoPath ? summary.label : t('project.noProject')
+}
+
 function selectProject(key: string): void {
   emit('select', props.selectedKey === key ? null : key)
 }
@@ -43,8 +52,8 @@ function selectProject(key: string): void {
   <section class="todo-panel project-dashboard" aria-labelledby="project-dashboard-title">
     <div class="panel-heading">
       <div>
-        <p class="eyebrow">Project dashboard</p>
-        <h2 id="project-dashboard-title">Projects</h2>
+        <p class="eyebrow">{{ t('project.eyebrow') }}</p>
+        <h2 id="project-dashboard-title">{{ t('project.title') }}</h2>
       </div>
       <button
         type="button"
@@ -53,7 +62,7 @@ function selectProject(key: string): void {
         :aria-pressed="selectedKey === null"
         @click="emit('select', null)"
       >
-        All projects
+        {{ t('project.allProjects') }}
       </button>
     </div>
 
@@ -70,20 +79,20 @@ function selectProject(key: string): void {
           :aria-pressed="selectedKey === summary.key"
           @click="selectProject(summary.key)"
         >
-          <span class="project-card-title">{{ summary.label }}</span>
+          <span class="project-card-title">{{ projectLabel(summary) }}</span>
           <span v-if="summary.repoPath" class="project-card-subtitle">{{ summary.repoPath }}</span>
           <span class="project-card-counts">
-            <span>{{ summary.active }} active</span>
-            <span>{{ summary.done }} done</span>
-            <span v-if="summary.doing > 0">{{ summary.doing }} doing</span>
-            <span v-if="summary.blocked > 0">{{ summary.blocked }} blocked</span>
-            <span v-if="summary.review > 0">{{ summary.review }} review</span>
+            <span>{{ t('project.active', { count: summary.active }) }}</span>
+            <span>{{ t('project.done', { count: summary.done }) }}</span>
+            <span v-if="summary.doing > 0">{{ t('project.doing', { count: summary.doing }) }}</span>
+            <span v-if="summary.blocked > 0">{{ t('project.blocked', { count: summary.blocked }) }}</span>
+            <span v-if="summary.review > 0">{{ t('project.review', { count: summary.review }) }}</span>
           </span>
         </button>
 
         <div class="project-card-actions">
           <button type="button" class="ghost-button" @click="emit('setRepoPath', summary.key)">
-            Set repo path
+            {{ t('project.setRepoPath') }}
           </button>
           <button
             v-if="canHaveDefaultCommands(summary)"
@@ -91,10 +100,10 @@ function selectProject(key: string): void {
             class="ghost-button"
             @click="emit('setDefaultCommands', summary.key)"
           >
-            {{ hasDefaultCommands(summary) ? 'Edit default commands' : 'Set default commands' }}
+            {{ hasDefaultCommands(summary) ? t('project.editDefaultCommands') : t('project.setDefaultCommands') }}
           </button>
           <button type="button" class="ghost-button" @click="emit('copy', summary.key)">
-            Copy context
+            {{ t('project.copyContext') }}
           </button>
           <button
             v-if="hasSingleRepoPath(summary)"
@@ -102,7 +111,7 @@ function selectProject(key: string): void {
             class="ghost-button"
             @click="emit('export', summary.key)"
           >
-            Export context
+            {{ t('project.exportContext') }}
           </button>
           <button
             v-if="hasSingleRepoPath(summary)"
@@ -110,7 +119,7 @@ function selectProject(key: string): void {
             class="ghost-button"
             @click="emit('exportLocalTodo', summary.key)"
           >
-            Export .localtodo/
+            {{ t('project.exportLocalTodo') }}
           </button>
         </div>
       </article>

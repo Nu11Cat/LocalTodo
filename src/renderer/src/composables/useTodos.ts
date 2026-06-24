@@ -53,6 +53,7 @@ import {
   type ProjectDefaultCommands
 } from '@renderer/domain/projectDefaultCommands'
 import { migrateStoredTasks } from '@renderer/domain/taskMigration'
+import { translate } from '@renderer/composables/useLocale'
 import {
   buildTaskInputFromTemplate,
   taskTemplates
@@ -279,7 +280,7 @@ async function loadTodos(): Promise<LoadTodosResult> {
     if (tasks === null) {
       return {
         status: 'error',
-        message: 'Saved data could not be read. Your existing data file was left unchanged.',
+        message: translate('err.dataUnreadable'),
         tasks: []
       }
     }
@@ -412,7 +413,7 @@ export function useTodos() {
 
   async function revealDataFile(): Promise<RevealDataFileResult> {
     if (!window.api?.revealDataFile) {
-      return { status: 'error', message: 'Revealing the data file is not supported here.' }
+      return { status: 'error', message: translate('err.revealNotSupported') }
     }
 
     return window.api.revealDataFile()
@@ -420,7 +421,7 @@ export function useTodos() {
 
   async function openDataFile(): Promise<OpenDataFileResult> {
     if (!window.api?.openDataFile) {
-      return { status: 'error', message: 'Opening the data file is not supported here.' }
+      return { status: 'error', message: translate('err.openNotSupported') }
     }
 
     return window.api.openDataFile()
@@ -869,7 +870,7 @@ export function useTodos() {
     if (!window.api?.exportProjectAiContext) {
       return {
         status: 'error',
-        message: 'Project AI context export is not available.',
+        message: translate('err.exportNotAvailable'),
         excludedSensitiveCount: context.excludedSensitiveCount
       }
     }
@@ -888,13 +889,13 @@ export function useTodos() {
     options: SensitiveTaskActionOptions = {}
   ): Promise<ExportProjectAiContextResult> {
     if (!window.api?.exportProjectAiContext) {
-      return { status: 'error', message: 'Project AI context export is not available.', excludedSensitiveCount: 0 }
+      return { status: 'error', message: translate('err.exportNotAvailable'), excludedSensitiveCount: 0 }
     }
 
     const summary = findProjectSummary(projectSummaries.value, key)
 
     if (!summary) {
-      return { status: 'error', message: 'Project was not found.', excludedSensitiveCount: 0 }
+      return { status: 'error', message: translate('err.projectNotFound'), excludedSensitiveCount: 0 }
     }
 
     const filtered = filterSensitiveTasks(summary.tasks, options)
@@ -913,19 +914,19 @@ export function useTodos() {
     options: ExportLocalTodoProjectOptions = {}
   ): Promise<ExportLocalTodoProjectResult> {
     if (!window.api?.exportLocalTodoProject) {
-      return { status: 'error', message: '.localtodo project export is not available.', excludedSensitiveCount: 0 }
+      return { status: 'error', message: translate('err.localTodoExportNotAvailable'), excludedSensitiveCount: 0 }
     }
 
     const summary = findProjectSummary(projectSummaries.value, key)
 
     if (!summary) {
-      return { status: 'error', message: 'Project was not found.', excludedSensitiveCount: 0 }
+      return { status: 'error', message: translate('err.projectNotFound'), excludedSensitiveCount: 0 }
     }
 
     const repoPath = summary.repoPath
 
     if (!repoPath) {
-      return { status: 'error', message: 'Project does not have a repository path.', excludedSensitiveCount: 0 }
+      return { status: 'error', message: translate('err.noRepoPath'), excludedSensitiveCount: 0 }
     }
 
     const filtered = filterSensitiveTasks(summary.tasks, options)
@@ -949,19 +950,19 @@ export function useTodos() {
     fileNames: string[]
   ): Promise<CleanupStaleLocalTodoTaskFilesResult> {
     if (!window.api?.cleanupStaleLocalTodoTaskFiles) {
-      return { status: 'error', message: 'Stale task file cleanup is not available.' }
+      return { status: 'error', message: translate('err.cleanupNotAvailable') }
     }
 
     const summary = findProjectSummary(projectSummaries.value, key)
 
     if (!summary) {
-      return { status: 'error', message: 'Project was not found.' }
+      return { status: 'error', message: translate('err.projectNotFound') }
     }
 
     const repoPath = summary.repoPath
 
     if (!repoPath) {
-      return { status: 'error', message: 'Project does not have a repository path.' }
+      return { status: 'error', message: translate('err.noRepoPath') }
     }
 
     return window.api.cleanupStaleLocalTodoTaskFiles({ repoPath, fileNames })
@@ -969,7 +970,7 @@ export function useTodos() {
 
   async function openExportedAiContext(filePath: string): Promise<OpenExportedAiContextResult> {
     if (!window.api?.openExportedAiContextFile) {
-      return { status: 'error', message: 'Open exported AI context is not available.' }
+      return { status: 'error', message: translate('err.openExportNotAvailable') }
     }
 
     return window.api.openExportedAiContextFile(filePath)
@@ -977,7 +978,7 @@ export function useTodos() {
 
   async function revealExportedAiContext(filePath: string): Promise<RevealExportedAiContextResult> {
     if (!window.api?.revealExportedAiContextFile) {
-      return { status: 'error', message: 'Reveal exported AI context is not available.' }
+      return { status: 'error', message: translate('err.revealExportNotAvailable') }
     }
 
     return window.api.revealExportedAiContextFile(filePath)
@@ -999,14 +1000,14 @@ export function useTodos() {
 
   async function previewTodosJsonImport(file: File): Promise<ImportTodosJsonPreviewResult> {
     if (!isLoaded.value) {
-      return { status: 'not-loaded', message: 'Saved data is still loading.' }
+      return { status: 'not-loaded', message: translate('err.stillLoading') }
     }
 
     try {
       const importedTodos = parseDataFileText(await file.text())
 
       if (importedTodos === null) {
-        return { status: 'invalid', message: 'Selected file is not a valid LocalTodo JSON export.' }
+        return { status: 'invalid', message: translate('err.invalidImport') }
       }
 
       return {
@@ -1018,18 +1019,18 @@ export function useTodos() {
     } catch (error) {
       return {
         status: 'invalid',
-        message: error instanceof Error ? error.message : 'Failed to read selected JSON file.'
+        message: error instanceof Error ? error.message : translate('err.readJsonFailed')
       }
     }
   }
 
   async function applyTodosJsonImport(importedTodos: Task[]): Promise<ImportTodosJsonApplyResult> {
     if (!isLoaded.value) {
-      return { status: 'not-loaded', message: 'Saved data is still loading.' }
+      return { status: 'not-loaded', message: translate('err.stillLoading') }
     }
 
     if (!window.api?.createImportRestorePoint) {
-      return { status: 'restore-error', message: 'Import restore point creation is not available.' }
+      return { status: 'restore-error', message: translate('err.restorePointNotAvailable') }
     }
 
     const previousTaskCount = todos.value.length

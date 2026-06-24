@@ -1,0 +1,245 @@
+import type { en } from './en'
+
+// Simplified Chinese. Must mirror every key in `en`; the `satisfies typeof en`
+// check below fails the build if a key is missing or misspelled.
+export const zh = {
+  // App shell / hero
+  'app.eyebrow': '本地优先的桌面应用',
+  'app.title': 'LocalTodo',
+  'app.intro': '在本设备上维护一个轻量的任务清单。',
+  'app.language': '语言',
+
+  // New-todo form
+  'form.newTodo': '新建任务',
+  'form.titlePlaceholder': '需要做什么？',
+  'form.taskTemplate': '任务模板',
+  'form.deleteTemplate': '删除模板',
+  'form.add': '添加',
+  'state.loading': '正在加载已保存的任务……',
+
+  // Data actions
+  'data.copyProjectContext': '复制项目上下文',
+  'data.exportProjectContext': '导出项目上下文',
+  'data.exportJson': '导出 JSON',
+  'data.importJson': '导入 JSON',
+  'data.lastSaved': '最近保存于 {time}',
+  'data.noDataFile': '尚无数据文件——将在你首次更改时创建。',
+  'data.showInFolder': '在文件夹中显示',
+  'data.openFile': '打开文件',
+  'data.openAiContext': '打开 AI 上下文',
+  'data.openFolder': '打开文件夹',
+
+  // Project dashboard
+  'project.eyebrow': '项目面板',
+  'project.title': '项目',
+  'project.allProjects': '全部项目',
+  'project.noProject': '（无项目）',
+  'project.active': '{count} 进行中',
+  'project.done': '{count} 已完成',
+  'project.doing': '{count} 处理中',
+  'project.blocked': '{count} 受阻',
+  'project.review': '{count} 待审',
+  'project.setRepoPath': '设置仓库路径',
+  'project.setDefaultCommands': '设置默认命令',
+  'project.editDefaultCommands': '编辑默认命令',
+  'project.copyContext': '复制上下文',
+  'project.exportContext': '导出上下文',
+  'project.exportLocalTodo': '导出 .localtodo/',
+
+  // Filter bar
+  'filter.title': '查找任务',
+  'filter.clear': '清除筛选',
+  'filter.search': '搜索任务',
+  'filter.searchPlaceholder': '搜索标题、描述或标签',
+  'filter.quickViews': '快捷视图',
+  'filter.savedViews': '已存视图',
+  'filter.deleteSavedView': '删除已存视图 {name}',
+  'filter.savedViewName': '视图名称',
+  'filter.nameThisView': '为此视图命名',
+  'filter.saveView': '保存视图',
+  'filter.sort': '排序',
+  'filter.sortBy': '排序方式',
+  'filter.sortAscending': '升序排列',
+  'filter.sortDescending': '降序排列',
+  'filter.asc': '升序',
+  'filter.desc': '降序',
+  'filter.status': '状态',
+  'filter.priority': '优先级',
+  'filter.type': '类型',
+  'filter.tags': '标签',
+  'filter.matchAny': '匹配任一',
+  'filter.matchAll': '匹配全部',
+
+  // Sort option labels
+  'sort.manual': '手动',
+  'sort.updatedAt': '更新时间',
+  'sort.createdAt': '创建时间',
+  'sort.priority': '优先级',
+
+  // Quick view labels
+  'quickView.recent': '最近更新',
+  'quickView.blocked': '受阻',
+  'quickView.unassigned': '无项目',
+
+  // Active / completed panels
+  'panel.active': '进行中',
+  'panel.completed': '已完成',
+  'panel.project': '项目：{name}',
+  'panel.shown': '显示 {shown} / {total}',
+  'panel.open': '{count} 项待办',
+  'panel.copyActiveContext': '复制进行中上下文',
+  'panel.clearCompleted': '清除已完成',
+  'panel.noActiveMatch': '没有进行中的任务匹配当前筛选。',
+  'panel.noActive': '没有进行中的任务。在上方添加一个。',
+  'panel.noCompletedMatch': '没有已完成的任务匹配当前筛选。',
+  'panel.noCompleted': '已完成的任务将显示在这里。',
+
+  // Todo item
+  'todo.sensitive': '敏感',
+  'todo.edit': '编辑',
+  'todo.copyAiContext': '复制 AI 上下文',
+  'todo.remove': '删除',
+
+  // Task detail panel
+  'detail.title': '任务详情',
+  'detail.empty': '选择一个任务以编辑状态、优先级、类型、标签、项目上下文和 Markdown 备注。',
+  'detail.copyAiContext': '复制 AI 上下文',
+  'detail.saveAsTemplate': '另存为模板',
+  'detail.close': '关闭',
+  'detail.status': '状态',
+  'detail.priority': '优先级',
+  'detail.type': '类型',
+  'detail.sensitiveTask': '敏感任务',
+  'detail.sensitiveHint': '敏感任务默认不会导出到 AI 上下文。',
+  'detail.project': '项目',
+  'detail.projectPlaceholder': '项目名称',
+  'detail.repoPath': '仓库路径',
+  'detail.repoPathPlaceholder': 'G:/path/to/repo',
+  'detail.browse': '浏览……',
+  'detail.repoPathWarning': '仓库路径应为绝对路径（例如 G:/path/to/repo）。',
+  'detail.useRepoPath': '使用 {path}',
+  'detail.tags': '标签',
+  'detail.taskTags': '任务标签',
+  'detail.noTags': '暂无标签。',
+  'detail.addTags': '添加标签，用逗号分隔',
+  'detail.relatedFiles': '相关文件',
+  'detail.noRelatedFiles': '暂无相关文件。',
+  'detail.addRelatedFiles': '添加文件路径，用逗号分隔',
+  'detail.commands': '命令',
+  'detail.noCommands': '暂无命令。',
+  'detail.addCommands': '添加命令，用逗号分隔',
+  'detail.description': '描述',
+  'detail.descriptionPlaceholder':
+    '撰写 Markdown 备注、上下文、验收标准或日志。Ctrl/Cmd+Enter 保存。',
+  'detail.activityLog': '活动日志',
+  'detail.noActivity': '暂无活动。',
+  'detail.notePlaceholder': '添加进展备注：你做了什么、为何受阻、下一步。Ctrl/Cmd+Enter 添加。',
+  'detail.addNote': '添加备注',
+
+  // Status labels
+  'status.inbox': '收件箱',
+  'status.todo': '待办',
+  'status.doing': '处理中',
+  'status.blocked': '受阻',
+  'status.review': '待审',
+  'status.done': '已完成',
+
+  // Priority labels
+  'priority.low': '低',
+  'priority.medium': '中',
+  'priority.high': '高',
+  'priority.urgent': '紧急',
+
+  // Type labels
+  'type.feature': '功能',
+  'type.bug': '缺陷',
+  'type.refactor': '重构',
+  'type.research': '调研',
+  'type.chore': '杂务',
+  'type.deploy': '部署',
+  'type.review': '审查',
+
+  // Built-in template labels
+  'template.blank': '空白',
+  'template.bug': '缺陷',
+  'template.feature': '功能',
+  'template.refactor': '重构',
+  'template.release': '发布',
+
+  // Action messages
+  'msg.projectNotFound': '未找到该项目。',
+  'msg.showInFolderFailed': '在文件夹中显示失败：{message}',
+  'msg.openDataFileFailed': '打开数据文件失败：{message}',
+  'msg.importFailed': '导入失败：{message}',
+  'msg.importCancelled': '已取消导入。',
+  'msg.importing': '正在创建恢复点并导入 JSON……',
+  'msg.imported': '已导入 {imported}。替换了 {previous}。恢复点已保存到 {path}。',
+  'msg.importFailedBeforeOverwrite': '覆盖前导入失败：{message}',
+  'msg.savedView': '已保存视图“{name}”。',
+  'msg.copiedTaskContext': '已复制任务 AI 上下文。',
+  'msg.sensitiveNotCopied': '敏感任务的上下文未被复制。',
+  'msg.copiedActiveContext': '已复制进行中 AI 上下文。{excluded}',
+  'msg.copiedProjectContext': '已复制项目 AI 上下文。{excluded}',
+  'msg.setRepoPath': '已为 {count} 设置仓库路径。',
+  'msg.savedDefaultCommands': '已为“{name}”保存 {count}。',
+  'msg.clearedDefaultCommands': '已清除“{name}”的默认命令。',
+  'msg.savedTemplate': '已保存模板“{name}”。',
+  'msg.deletedTemplate': '已删除模板“{name}”。',
+  'msg.exportingContext': '正在导出项目上下文……',
+  'msg.savedTo': '已保存到 {path}。{excluded}',
+  'msg.exportCancelled': '已取消导出。',
+  'msg.exportFailed': '导出失败：{message}',
+  'msg.exportingLocalTodo': '正在导出 .localtodo 工作区……',
+  'msg.savedLocalTodo': '已将 .localtodo 工作区保存到 {dir}（{count}）。{excluded}{gitignore}',
+  'msg.openFailed': '打开失败：{message}',
+  'msg.revealFailed': '定位失败：{message}',
+  'msg.excludedSensitive': ' 已默认排除 {count}。',
+  'msg.gitignoreUpdated': ' 已在 .gitignore 中添加 LocalTodo 生成文件条目。',
+  'msg.gitignoreAlready': ' 推荐的 .gitignore 条目已存在。',
+  'msg.gitignoreError': ' 导出成功，但 .gitignore 未更新：{message}',
+  'msg.gitignoreReminder': ' 提示：若希望这些文件仅保留在本地，请将 {entries} 添加到 .gitignore。',
+  'msg.keptStale': ' 已保留 {count}。',
+  'msg.deletedStale': ' 已删除 {count}。',
+  'msg.deleteStaleFailed': ' 删除过期任务文件失败：{message}',
+
+  // Renderer-owned error/status messages surfaced through useTodos results.
+  'err.dataUnreadable': '无法读取已保存的数据。你现有的数据文件未被更改。',
+  'err.revealNotSupported': '此环境不支持定位数据文件。',
+  'err.openNotSupported': '此环境不支持打开数据文件。',
+  'err.exportNotAvailable': '项目 AI 上下文导出不可用。',
+  'err.localTodoExportNotAvailable': '.localtodo 项目导出不可用。',
+  'err.readJsonFailed': '读取所选 JSON 文件失败。',
+  'err.projectNotFound': '未找到该项目。',
+  'err.noRepoPath': '该项目没有仓库路径。',
+  'err.cleanupNotAvailable': '过期任务文件清理不可用。',
+  'err.openExportNotAvailable': '打开已导出的 AI 上下文不可用。',
+  'err.revealExportNotAvailable': '定位已导出的 AI 上下文不可用。',
+  'err.stillLoading': '已保存的数据仍在加载。',
+  'err.invalidImport': '所选文件不是有效的 LocalTodo JSON 导出文件。',
+  'err.restorePointNotAvailable': '无法创建导入恢复点。',
+
+  // Confirms / prompts
+  'confirm.importJson':
+    '导入 JSON 将用所选文件中的 {import} 替换你当前的 {current}。\n\nLocalTodo 会先为当前任务创建一个恢复点。是否继续？',
+  'confirm.deleteSavedView': '删除已存视图“{name}”？',
+  'confirm.includeSensitive': '{count} 将被默认排除。本次操作是否包含敏感任务？',
+  'confirm.setRepoPath': '为“{name}”中的 {count} 设置仓库路径？',
+  'confirm.copySensitive': '此任务被标记为敏感。仍要复制其 AI 上下文吗？',
+  'confirm.writeGitignore':
+    'LocalTodo 会将生成的任务文件导出到此仓库。是否添加推荐的 .gitignore 条目以保持它们仅在本地？选择“取消”则在不修改 .gitignore 的情况下导出。',
+  'confirm.cleanupStale':
+    'LocalTodo 在 .localtodo/tasks/ 中发现 {count} 不再匹配此项目：\n\n{files}\n\n是否删除这些文件？选择“取消”则保留它们。',
+  'confirm.deleteTemplate': '删除模板“{name}”？',
+  'prompt.defaultCommands':
+    '“{name}”的默认命令，用逗号分隔。留空则清除。这些命令会预填到之后绑定到此项目且尚无命令的任务。',
+  'prompt.templateName': '模板名称？',
+
+  // Pluralized count fragments — Chinese has no plural form, so both sides match
+  'count.task': '{n} 个任务|{n} 个任务',
+  'count.sensitiveTask': '{n} 个敏感任务|{n} 个敏感任务',
+  'count.defaultCommand': '{n} 条默认命令|{n} 条默认命令',
+  'count.staleTaskFile': '{n} 个过期任务文件|{n} 个过期任务文件',
+  'count.taskFile': '{n} 个任务文件|{n} 个任务文件'
+} satisfies typeof en
+
+export default zh

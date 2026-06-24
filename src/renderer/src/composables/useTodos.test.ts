@@ -1,6 +1,7 @@
 import { nextTick } from 'vue'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useTodos } from './useTodos'
+import { useLocale } from './useLocale'
 
 const storage = new Map<string, string>()
 const fileStorage = new Map<string, string>()
@@ -90,6 +91,9 @@ beforeEach(() => {
   vi.stubGlobal('window', {
     api: createMockApi()
   })
+  // Pin the i18n locale so message assertions are independent of the host's
+  // system language (navigator.language seeds the locale singleton on first use).
+  useLocale().setLocale('en')
 })
 
 afterEach(() => {

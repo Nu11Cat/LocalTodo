@@ -59,6 +59,27 @@ button {
   text-transform: uppercase;
 }
 
+.hero-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.hero-top .eyebrow {
+  margin-bottom: 0;
+}
+
+.language-switcher select {
+  padding: 4px 10px;
+  border: 1px solid #c5d2e0;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #1f2d3d;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
 h1,
 h2,
 p {

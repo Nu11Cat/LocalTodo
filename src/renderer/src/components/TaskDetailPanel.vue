@@ -10,6 +10,21 @@ import {
   type TaskType
 } from '@renderer/domain/taskModel'
 import { isAbsoluteRepoPath } from '@renderer/domain/repoPath'
+import { useLocale } from '@renderer/composables/useLocale'
+
+const { t } = useLocale()
+
+function statusLabel(status: TaskStatus): string {
+  return t(`status.${status}` as const)
+}
+
+function priorityLabel(priority: TaskPriority): string {
+  return t(`priority.${priority}` as const)
+}
+
+function typeLabel(taskType: TaskType): string {
+  return t(`type.${taskType}` as const)
+}
 
 type TaskPatch = Partial<{
   status: TaskStatus
@@ -314,46 +329,46 @@ function formatNoteTimestamp(value: string): string {
 <template>
   <section class="task-detail-panel" aria-labelledby="task-detail-title">
     <div v-if="!task" class="task-detail-empty">
-      <h2 id="task-detail-title">Task details</h2>
-      <p>Select a task to edit status, priority, type, tags, project context, and Markdown notes.</p>
+      <h2 id="task-detail-title">{{ t('detail.title') }}</h2>
+      <p>{{ t('detail.empty') }}</p>
     </div>
 
     <template v-else>
       <div class="task-detail-header">
         <div>
-          <p class="eyebrow">Task details</p>
+          <p class="eyebrow">{{ t('detail.title') }}</p>
           <h2 id="task-detail-title">{{ task.title }}</h2>
         </div>
         <div class="panel-actions">
-          <button type="button" class="ghost-button" @click="emit('copy')">Copy AI Context</button>
+          <button type="button" class="ghost-button" @click="emit('copy')">{{ t('detail.copyAiContext') }}</button>
           <button type="button" class="ghost-button" @click="emit('saveAsTemplate')">
-            Save as template
+            {{ t('detail.saveAsTemplate') }}
           </button>
-          <button type="button" class="ghost-button" @click="emit('close')">Close</button>
+          <button type="button" class="ghost-button" @click="emit('close')">{{ t('detail.close') }}</button>
         </div>
       </div>
 
       <div class="field-grid">
         <label>
-          <span>Status</span>
+          <span>{{ t('detail.status') }}</span>
           <select :value="task.status" @change="updateStatus">
-            <option v-for="status in taskStatuses" :key="status" :value="status">{{ status }}</option>
+            <option v-for="status in taskStatuses" :key="status" :value="status">{{ statusLabel(status) }}</option>
           </select>
         </label>
 
         <label>
-          <span>Priority</span>
+          <span>{{ t('detail.priority') }}</span>
           <select :value="task.priority" @change="updatePriority">
             <option v-for="priority in taskPriorities" :key="priority" :value="priority">
-              {{ priority }}
+              {{ priorityLabel(priority) }}
             </option>
           </select>
         </label>
 
         <label>
-          <span>Type</span>
+          <span>{{ t('detail.type') }}</span>
           <select :value="task.type" @change="updateType">
-            <option v-for="taskType in taskTypes" :key="taskType" :value="taskType">{{ taskType }}</option>
+            <option v-for="taskType in taskTypes" :key="taskType" :value="taskType">{{ typeLabel(taskType) }}</option>
           </select>
         </label>
       </div>
@@ -362,33 +377,33 @@ function formatNoteTimestamp(value: string): string {
         <label class="checkbox-label">
           <input type="checkbox" :checked="task.sensitive" @change="updateSensitive" />
           <span>
-            Sensitive task
-            <small>Sensitive tasks are excluded from AI Context exports by default.</small>
+            {{ t('detail.sensitiveTask') }}
+            <small>{{ t('detail.sensitiveHint') }}</small>
           </span>
         </label>
       </div>
 
       <div class="field-grid detail-field">
         <label>
-          <span>Project</span>
+          <span>{{ t('detail.project') }}</span>
           <input
             v-model="projectNameDraft"
             type="text"
             maxlength="200"
-            placeholder="Project name"
+            :placeholder="t('detail.projectPlaceholder')"
             @keydown.enter.prevent="saveProjectName"
             @blur="saveProjectName"
           />
         </label>
 
         <label>
-          <span>Repository path</span>
+          <span>{{ t('detail.repoPath') }}</span>
           <div class="repo-path-input">
             <input
               v-model="repoPathDraft"
               type="text"
               maxlength="1000"
-              placeholder="G:/path/to/repo"
+              :placeholder="t('detail.repoPathPlaceholder')"
               @keydown.enter.prevent="saveRepoPath"
               @blur="saveRepoPath"
             />
@@ -398,11 +413,11 @@ function formatNoteTimestamp(value: string): string {
               class="ghost-button"
               @click="selectRepoPathDirectory"
             >
-              Browse…
+              {{ t('detail.browse') }}
             </button>
           </div>
           <small v-if="showRepoPathWarning" class="repo-path-warning">
-            Repository path should be an absolute path (e.g. G:/path/to/repo).
+            {{ t('detail.repoPathWarning') }}
           </small>
           <button
             v-if="repoPathSuggestion"
@@ -410,15 +425,15 @@ function formatNoteTimestamp(value: string): string {
             class="repo-path-suggestion"
             @click="applyRepoPathSuggestion"
           >
-            Use {{ repoPathSuggestion }}
+            {{ t('detail.useRepoPath', { path: repoPathSuggestion }) }}
           </button>
         </label>
       </div>
 
       <div class="detail-field">
-        <label for="task-tags">Tags</label>
-        <div class="tag-list" aria-label="Task tags">
-          <span v-if="task.tags.length === 0" class="empty-state">No tags yet.</span>
+        <label for="task-tags">{{ t('detail.tags') }}</label>
+        <div class="tag-list" :aria-label="t('detail.taskTags')">
+          <span v-if="task.tags.length === 0" class="empty-state">{{ t('detail.noTags') }}</span>
           <button
             v-for="tag in task.tags"
             :key="tag"
@@ -433,16 +448,16 @@ function formatNoteTimestamp(value: string): string {
           id="task-tags"
           v-model="tagDraft"
           type="text"
-          placeholder="Add tags, separated by commas"
+          :placeholder="t('detail.addTags')"
           @keydown.enter.prevent="addTags"
           @blur="addTags"
         />
       </div>
 
       <div class="detail-field">
-        <label for="task-related-files">Related files</label>
-        <div class="tag-list" aria-label="Related files">
-          <span v-if="task.relatedFiles.length === 0" class="empty-state">No related files yet.</span>
+        <label for="task-related-files">{{ t('detail.relatedFiles') }}</label>
+        <div class="tag-list" :aria-label="t('detail.relatedFiles')">
+          <span v-if="task.relatedFiles.length === 0" class="empty-state">{{ t('detail.noRelatedFiles') }}</span>
           <button
             v-for="file in task.relatedFiles"
             :key="file"
@@ -457,16 +472,16 @@ function formatNoteTimestamp(value: string): string {
           id="task-related-files"
           v-model="relatedFileDraft"
           type="text"
-          placeholder="Add file paths, separated by commas"
+          :placeholder="t('detail.addRelatedFiles')"
           @keydown.enter.prevent="addRelatedFiles"
           @blur="addRelatedFiles"
         />
       </div>
 
       <div class="detail-field">
-        <label for="task-commands">Commands</label>
-        <div class="tag-list" aria-label="Commands">
-          <span v-if="task.commands.length === 0" class="empty-state">No commands yet.</span>
+        <label for="task-commands">{{ t('detail.commands') }}</label>
+        <div class="tag-list" :aria-label="t('detail.commands')">
+          <span v-if="task.commands.length === 0" class="empty-state">{{ t('detail.noCommands') }}</span>
           <button
             v-for="command in task.commands"
             :key="command"
@@ -481,46 +496,46 @@ function formatNoteTimestamp(value: string): string {
           id="task-commands"
           v-model="commandDraft"
           type="text"
-          placeholder="Add commands, separated by commas"
+          :placeholder="t('detail.addCommands')"
           @keydown.enter.prevent="addCommands"
           @blur="addCommands"
         />
       </div>
 
       <div class="detail-field">
-        <label for="task-description">Description</label>
+        <label for="task-description">{{ t('detail.description') }}</label>
         <textarea
           id="task-description"
           v-model="descriptionDraft"
           rows="8"
-          placeholder="Write Markdown notes, context, acceptance criteria, or logs. Ctrl/Cmd+Enter saves."
+          :placeholder="t('detail.descriptionPlaceholder')"
           @blur="saveDescription"
           @keydown="saveDescriptionWithShortcut"
         />
       </div>
 
       <div class="detail-field">
-        <label for="task-note">Activity log</label>
-        <ol v-if="notesNewestFirst.length > 0" class="note-list" aria-label="Activity log">
+        <label for="task-note">{{ t('detail.activityLog') }}</label>
+        <ol v-if="notesNewestFirst.length > 0" class="note-list" :aria-label="t('detail.activityLog')">
           <li v-for="note in notesNewestFirst" :key="note.id" class="note-item">
             <div class="note-meta">
               <time :datetime="note.createdAt">{{ formatNoteTimestamp(note.createdAt) }}</time>
               <button type="button" class="ghost-button" @click="emit('removeNote', note.id)">
-                Remove
+                {{ t('todo.remove') }}
               </button>
             </div>
             <p class="note-content">{{ note.content }}</p>
           </li>
         </ol>
-        <p v-else class="empty-state">No activity yet.</p>
+        <p v-else class="empty-state">{{ t('detail.noActivity') }}</p>
         <textarea
           id="task-note"
           v-model="noteDraft"
           rows="3"
-          placeholder="Add a progress note: what you did, why it's blocked, next step. Ctrl/Cmd+Enter adds."
+          :placeholder="t('detail.notePlaceholder')"
           @keydown="addNoteWithShortcut"
         />
-        <button type="button" class="ghost-button" @click="addNote">Add note</button>
+        <button type="button" class="ghost-button" @click="addNote">{{ t('detail.addNote') }}</button>
       </div>
     </template>
   </section>

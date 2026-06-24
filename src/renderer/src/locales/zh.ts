@@ -8,6 +8,10 @@ export const zh = {
   'app.title': 'LocalTodo',
   'app.intro': '在本设备上维护一个轻量的任务清单。',
   'app.language': '语言',
+  'app.theme': '主题',
+  'theme.light': '浅色',
+  'theme.dark': '深色',
+  'theme.system': '跟随系统',
 
   // New-todo form
   'form.newTodo': '新建任务',

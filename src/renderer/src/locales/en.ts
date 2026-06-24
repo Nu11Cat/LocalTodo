@@ -8,6 +8,10 @@ export const en = {
   'app.title': 'LocalTodo',
   'app.intro': 'Keep a lightweight task list on this device.',
   'app.language': 'Language',
+  'app.theme': 'Theme',
+  'theme.light': 'Light',
+  'theme.dark': 'Dark',
+  'theme.system': 'System',
 
   // New-todo form
   'form.newTodo': 'New todo',

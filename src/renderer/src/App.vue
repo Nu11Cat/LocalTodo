@@ -4,11 +4,16 @@ import ProjectDashboard from './components/ProjectDashboard.vue'
 import TaskDetailPanel from './components/TaskDetailPanel.vue'
 import { useTodos } from './composables/useTodos'
 import { useLocale, availableLocales } from './composables/useLocale'
+import { useTheme, availableThemes } from './composables/useTheme'
 import type { MessageKey } from './locales/en'
 import { taskPriorities, taskStatuses, taskTypes } from './domain/taskModel'
 import type { TaskSortKey } from './domain/taskSort'
 
 const { t, locale, setLocale } = useLocale()
+const { theme, setTheme, applyTheme } = useTheme()
+
+// Reflect the persisted/system theme onto <html> as soon as the app script runs.
+applyTheme()
 
 const sortOptions: TaskSortKey[] = ['manual', 'updatedAt', 'createdAt', 'priority']
 
@@ -638,14 +643,24 @@ async function revealLastDir(): Promise<void> {
     <section class="hero-card" aria-labelledby="app-title">
       <div class="hero-top">
         <p class="eyebrow">{{ t('app.eyebrow') }}</p>
-        <label class="language-switcher">
-          <span class="sr-only">{{ t('app.language') }}</span>
-          <select :value="locale" @change="setLocale(($event.target as HTMLSelectElement).value as 'en' | 'zh')">
-            <option v-for="option in availableLocales" :key="option.value" :value="option.value">
-              {{ option.label }}
-            </option>
-          </select>
-        </label>
+        <div class="hero-switchers">
+          <label class="language-switcher">
+            <span class="sr-only">{{ t('app.theme') }}</span>
+            <select :value="theme" @change="setTheme(($event.target as HTMLSelectElement).value as 'light' | 'dark' | 'system')">
+              <option v-for="option in availableThemes" :key="option.value" :value="option.value">
+                {{ t(option.labelKey) }}
+              </option>
+            </select>
+          </label>
+          <label class="language-switcher">
+            <span class="sr-only">{{ t('app.language') }}</span>
+            <select :value="locale" @change="setLocale(($event.target as HTMLSelectElement).value as 'en' | 'zh')">
+              <option v-for="option in availableLocales" :key="option.value" :value="option.value">
+                {{ option.label }}
+              </option>
+            </select>
+          </label>
+        </div>
       </div>
       <h1 id="app-title">{{ t('app.title') }}</h1>
       <p class="intro">{{ t('app.intro') }}</p>

@@ -58,6 +58,7 @@
   --shadow-card: 0 24px 70px rgba(23, 32, 51, 0.12);
   --ring-accent: 0 0 0 3px var(--accent-ring);
 
+  color-scheme: light;
   color: var(--text);
   background: var(--bg);
   font-family:
@@ -66,6 +67,59 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* --- Dark theme ---
+   Phase 2 of the UI polish plan. useTheme reflects the resolved preference onto
+   <html data-theme="dark">; these overrides re-point the same token vocabulary
+   defined in :root, so every rule that already references var(--...) follows
+   automatically — no per-rule dark styling needed. Values are tuned for readable
+   contrast on a deep slate background rather than literal inversions. */
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* Surfaces & background */
+  --bg: #0f1521;
+  --surface: rgba(26, 34, 48, 0.88);
+  --surface-solid: #1a2230;
+  --surface-2: #161d28;
+  --surface-3: #1e2735;
+
+  /* Borders */
+  --card-border: rgba(148, 163, 184, 0.16);
+  --border: #2b3645;
+  --border-input: #3a475a;
+  --border-switcher: #3a475a;
+  --border-dashed: #475569;
+
+  /* Text */
+  --text: #e6edf6;
+  --text-muted: #9aa7ba;
+  --text-label: #9fb2cc;
+  --text-subtle: #8593a6;
+  --text-strong-neutral: #cbd5e1;
+  --text-switcher: #e6edf6;
+  --text-remove: #cbd5e1;
+
+  /* Accent — filled controls use white-on-accent, so --accent keeps the deeper
+     blue (≈5.2:1 with #fff, passes AA); --accent-strong is the lighter tone for
+     accent *text* on dark surfaces (tag chips, suggestions). */
+  --accent: #2563eb;
+  --accent-strong: #60a5fa;
+  --accent-soft: rgba(59, 130, 246, 0.18);
+  --accent-ring: rgba(96, 165, 250, 0.4);
+  --on-accent: #fff;
+
+  /* Semantic */
+  --danger: #ef4444;
+  --danger-text: #fda4af;
+  --danger-soft: rgba(239, 68, 68, 0.18);
+  --warning-text: #fbbf24;
+  --fill-muted: #2b3645;
+  --fill-muted-2: #3a475a;
+
+  /* Shadow */
+  --shadow-card: 0 24px 70px rgba(0, 0, 0, 0.5);
 }
 
 * {
@@ -127,6 +181,13 @@ button {
 
 .hero-top .eyebrow {
   margin-bottom: 0;
+}
+
+.hero-switchers {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 .language-switcher select {

@@ -1652,6 +1652,56 @@ describe('useTodos data file info', () => {
     expect(todos.dataFileInfo.value?.size).toBe(22)
   })
 
+  it('sets the repo path for every task in a project group', async () => {
+    const todos = useTodos()
+    await todos.loaded
+
+    todos.draftTitle.value = 'First task'
+    todos.addTodo()
+    todos.updateTodo(todos.todos.value[0].id, { projectName: 'BatchProject' })
+    todos.draftTitle.value = 'Second task'
+    todos.addTodo()
+    todos.updateTodo(todos.todos.value[0].id, { projectName: 'BatchProject' })
+
+    const key = 'BatchProject\n'
+
+    vi.setSystemTime(new Date('2026-06-17T00:00:00.000Z'))
+    const changed = todos.setProjectRepoPath(key, 'G:/picked/repo')
+
+    expect(changed).toBe(2)
+    const batchTasks = todos.todos.value.filter((task) => task.projectName === 'BatchProject')
+    expect(batchTasks).toHaveLength(2)
+    for (const task of batchTasks) {
+      expect(task.repoPath).toBe('G:/picked/repo')
+      expect(task.updatedAt).toBe('2026-06-17T00:00:00.000Z')
+    }
+  })
+
+  it('returns 0 and changes nothing for an unknown project key', async () => {
+    const todos = useTodos()
+    await todos.loaded
+
+    todos.draftTitle.value = 'Lonely task'
+    todos.addTodo()
+    todos.updateTodo(todos.todos.value[0].id, { projectName: 'KeepMe', repoPath: 'G:/keep' })
+
+    expect(todos.setProjectRepoPath('missing\nkey', 'G:/picked/repo')).toBe(0)
+    expect(todos.todos.value[0].repoPath).toBe('G:/keep')
+  })
+
+  it('clears the repo path for a project group when passed null', async () => {
+    const todos = useTodos()
+    await todos.loaded
+
+    todos.draftTitle.value = 'Bound task'
+    todos.addTodo()
+    todos.updateTodo(todos.todos.value[0].id, { projectName: 'Bound', repoPath: 'G:/old/repo' })
+
+    const key = 'Bound\nG:/old/repo'
+    expect(todos.setProjectRepoPath(key, null)).toBe(1)
+    expect(todos.todos.value[0].repoPath).toBeUndefined()
+  })
+
   it('surfaces a friendly error when reveal/open are unsupported', async () => {
     vi.stubGlobal('window', { api: { platform: 'win32' } })
 

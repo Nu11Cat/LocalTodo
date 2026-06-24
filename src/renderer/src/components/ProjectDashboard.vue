@@ -11,6 +11,7 @@ const emit = defineEmits<{
   copy: [key: string]
   export: [key: string]
   exportLocalTodo: [key: string]
+  setRepoPath: [key: string]
 }>()
 
 function hasSingleRepoPath(summary: ProjectSummary): boolean {
@@ -69,6 +70,9 @@ function selectProject(key: string): void {
         </button>
 
         <div class="project-card-actions">
+          <button type="button" class="ghost-button" @click="emit('setRepoPath', summary.key)">
+            Set repo path
+          </button>
           <button type="button" class="ghost-button" @click="emit('copy', summary.key)">
             Copy context
           </button>

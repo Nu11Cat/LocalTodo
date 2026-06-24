@@ -48,6 +48,7 @@ const {
   toggleTodo,
   selectTodo,
   updateTodo,
+  setProjectRepoPath,
   addTaskNote,
   removeTaskNote,
   setFilterKeyword,
@@ -288,6 +289,35 @@ async function copyProjectGroupContext(key: string): Promise<void> {
   if (result.status === 'copied') {
     projectContextExportMessage.value = `Copied project AI context.${formatSensitiveExclusionMessage(result.excludedSensitiveCount)}`
   }
+}
+
+async function setProjectRepoPathFromDashboard(key: string): Promise<void> {
+  if (!window.api?.selectDirectory) {
+    return
+  }
+
+  const result = await window.api.selectDirectory()
+
+  if (result.status !== 'selected') {
+    return
+  }
+
+  const summary = projectSummaries.value.find((item) => item.key === key)
+
+  if (!summary) {
+    projectContextExportMessage.value = 'Project was not found.'
+    return
+  }
+
+  if (
+    summary.tasks.length > 1 &&
+    !window.confirm(`Set repo path for ${summary.tasks.length} tasks in "${summary.label}"?`)
+  ) {
+    return
+  }
+
+  const changed = setProjectRepoPath(key, result.dirPath)
+  projectContextExportMessage.value = `Set repo path for ${changed} task${changed === 1 ? '' : 's'}.`
 }
 
 async function handleProjectContextExport(
@@ -541,6 +571,7 @@ async function revealLastDir(): Promise<void> {
       @copy="copyProjectGroupContext"
       @export="exportProjectGroupContext"
       @export-local-todo="exportProjectLocalTodo"
+      @set-repo-path="setProjectRepoPathFromDashboard"
     />
 
     <section class="filter-bar" aria-labelledby="filter-title">

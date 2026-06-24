@@ -490,6 +490,22 @@ export function useTodos() {
     return true
   }
 
+  // Bind every task in a project group to one repo path in a single action,
+  // reusing updateTodo so each task goes through the same sanitize/timestamp/persist path.
+  function setProjectRepoPath(key: string, repoPath: string | null): number {
+    const summary = findProjectSummary(projectSummaries.value, key)
+
+    if (!summary) {
+      return 0
+    }
+
+    for (const task of summary.tasks) {
+      updateTodo(task.id, { repoPath })
+    }
+
+    return summary.tasks.length
+  }
+
   function addTaskNote(id: string, content: string): boolean {
     const trimmedContent = content.trim()
 
@@ -975,6 +991,7 @@ export function useTodos() {
     toggleTodo,
     selectTodo,
     updateTodo,
+    setProjectRepoPath,
     addTaskNote,
     removeTaskNote,
     setFilterKeyword,

@@ -58,6 +58,18 @@
   --shadow-card: 0 24px 70px rgba(23, 32, 51, 0.12);
   --ring-accent: 0 0 0 3px var(--accent-ring);
 
+  /* Typography scale ---
+     Phase 3 of the UI polish plan: a single font-size ladder replaces the
+     scattered 0.78/0.8/0.82/0.84/0.85rem literals so titles, body, helper text,
+     and labels share one vocabulary. --fs-h1 drops the former marketing-grade
+     clamp(2.25rem, 8vw, 4.5rem) to a productivity-tool heading size. */
+  --fs-h1: 1.875rem; /* page title */
+  --fs-h2: 1.05rem; /* panel headings */
+  --fs-body: 1rem; /* default body */
+  --fs-sm: 0.85rem; /* secondary text, inputs */
+  --fs-label: 0.82rem; /* field / filter labels */
+  --fs-xs: 0.78rem; /* chips, badges, meta */
+
   color-scheme: light;
   color: var(--text);
   background: var(--bg);
@@ -130,6 +142,7 @@ body {
   min-width: 320px;
   min-height: 100vh;
   margin: 0;
+  font-size: var(--fs-body);
 }
 
 button,
@@ -146,7 +159,7 @@ button {
 .app-shell {
   width: min(920px, calc(100vw - 32px));
   margin: 0 auto;
-  padding: 48px 0;
+  padding: 32px 0;
 }
 
 .hero-card,
@@ -160,13 +173,13 @@ button {
 }
 
 .hero-card {
-  padding: 36px;
+  padding: 28px;
 }
 
 .eyebrow {
   margin: 0 0 8px;
   color: var(--text-label);
-  font-size: 0.78rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -196,7 +209,7 @@ button {
   border-radius: var(--radius-xs);
   background: var(--surface-solid);
   color: var(--text-switcher);
-  font-size: 0.85rem;
+  font-size: var(--fs-sm);
   cursor: pointer;
 }
 
@@ -208,18 +221,18 @@ p {
 
 h1 {
   margin-bottom: 8px;
-  font-size: clamp(2.25rem, 8vw, 4.5rem);
-  line-height: 0.95;
+  font-size: var(--fs-h1);
+  line-height: 1.15;
 }
 
 h2 {
   margin-bottom: 0;
-  font-size: 1.15rem;
+  font-size: var(--fs-h2);
 }
 
 .intro {
   max-width: 560px;
-  margin-bottom: 28px;
+  margin-bottom: 20px;
   color: var(--text-muted);
 }
 
@@ -270,8 +283,8 @@ h2 {
 .todo-panel,
 .task-detail-panel,
 .filter-bar {
-  margin-top: 20px;
-  padding: 24px;
+  margin-top: 16px;
+  padding: 20px;
 }
 
 .filter-bar {
@@ -298,7 +311,7 @@ h2 {
 .filter-header {
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 18px;
+  margin-bottom: 14px;
 }
 
 .panel-actions,
@@ -347,7 +360,7 @@ h2 {
 
 .project-card-subtitle {
   color: var(--text-subtle);
-  font-size: 0.84rem;
+  font-size: var(--fs-sm);
   overflow-wrap: anywhere;
 }
 
@@ -363,18 +376,18 @@ h2 {
   padding: 4px 8px;
   color: var(--text-strong-neutral);
   background: var(--fill-muted);
-  font-size: 0.78rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
 }
 
 .project-card-actions .ghost-button {
   padding: 8px 10px;
-  font-size: 0.84rem;
+  font-size: var(--fs-sm);
 }
 
 .filter-row span {
   color: var(--text-label);
-  font-size: 0.82rem;
+  font-size: var(--fs-label);
   font-weight: 700;
 }
 
@@ -390,7 +403,7 @@ h2 {
   align-items: center;
   gap: 10px;
   margin: 12px 0 0;
-  font-size: 0.9rem;
+  font-size: var(--fs-sm);
   overflow-wrap: anywhere;
 }
 
@@ -422,18 +435,18 @@ h2 {
 
 .data-file-path {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 0.85rem;
+  font-size: var(--fs-sm);
   overflow-wrap: anywhere;
 }
 
 .data-file-meta {
-  font-size: 0.8rem;
+  font-size: var(--fs-xs);
   color: var(--text-subtle);
 }
 
 .todo-list {
   display: grid;
-  gap: 10px;
+  gap: 8px;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -444,7 +457,7 @@ h2 {
   gap: 16px;
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-  padding: 12px 14px;
+  padding: 10px 14px;
   background: var(--surface-solid);
 }
 
@@ -504,7 +517,7 @@ h2 {
 .field-grid span,
 .detail-field label {
   color: var(--text-label);
-  font-size: 0.82rem;
+  font-size: var(--fs-label);
   font-weight: 700;
 }
 
@@ -539,7 +552,7 @@ h2 {
   display: block;
   margin-top: 4px;
   color: var(--text-subtle);
-  font-size: 0.78rem;
+  font-size: var(--fs-xs);
   font-weight: 500;
 }
 
@@ -557,7 +570,7 @@ h2 {
   display: block;
   margin-top: 4px;
   color: var(--warning-text);
-  font-size: 0.78rem;
+  font-size: var(--fs-xs);
   font-weight: 600;
 }
 
@@ -569,7 +582,7 @@ h2 {
   padding: 4px 10px;
   color: var(--accent-strong);
   background: var(--surface-3);
-  font-size: 0.78rem;
+  font-size: var(--fs-xs);
   font-weight: 600;
   cursor: pointer;
 }
@@ -596,7 +609,7 @@ h2 {
 .sensitive-badge {
   color: var(--danger-text);
   background: var(--danger-soft);
-  font-size: 0.78rem;
+  font-size: var(--fs-xs);
   text-decoration: none;
 }
 
@@ -672,7 +685,7 @@ h2 {
 
 .note-meta time {
   color: var(--text-subtle);
-  font-size: 0.78rem;
+  font-size: var(--fs-xs);
   font-weight: 600;
 }
 
@@ -698,7 +711,7 @@ h2 {
   .todo-panel,
   .task-detail-panel,
   .filter-bar {
-    padding: 22px;
+    padding: 18px;
   }
 
   .todo-form,

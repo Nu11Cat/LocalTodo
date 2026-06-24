@@ -23,8 +23,15 @@ interface ProjectSummaryDraft {
   tasks: Task[]
 }
 
+// The grouping key for a project is its name and repo path joined by a newline.
+// Kept as a standalone helper so callers that only have the two fields (not a full
+// Task) — e.g. project-level default commands — compute the identical key.
+export function composeProjectKey(projectName?: string, repoPath?: string): string {
+  return `${projectName ?? ''}\n${repoPath ?? ''}`
+}
+
 export function getProjectKey(task: Task): string {
-  return `${task.projectName ?? ''}\n${task.repoPath ?? ''}`
+  return composeProjectKey(task.projectName, task.repoPath)
 }
 
 // Composite key produced by getProjectKey for tasks with neither projectName nor repoPath.

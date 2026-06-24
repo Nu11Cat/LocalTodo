@@ -27,6 +27,9 @@ const {
   customTemplates,
   saveTaskAsTemplate,
   deleteCustomTemplate,
+  projectDefaultCommands,
+  getProjectDefaultCommands,
+  setProjectDefaultCommands,
   selectedTodoId,
   filterState,
   sortState,
@@ -90,6 +93,10 @@ const todosSensitiveCount = computed(() => todos.value.filter((todo) => todo.sen
 
 const isCustomTemplateSelected = computed(() =>
   customTemplates.value.some((template) => template.id === selectedTemplateId.value)
+)
+
+const projectDefaultCommandKeys = computed(() =>
+  projectDefaultCommands.value.map((entry) => entry.key)
 )
 
 function formatBytes(size: number): string {
@@ -325,6 +332,37 @@ async function setProjectRepoPathFromDashboard(key: string): Promise<void> {
 
   const changed = setProjectRepoPath(key, result.dirPath)
   projectContextExportMessage.value = `Set repo path for ${changed} task${changed === 1 ? '' : 's'}.`
+}
+
+function setProjectDefaultCommandsFromDashboard(key: string): void {
+  const summary = projectSummaries.value.find((item) => item.key === key)
+
+  if (!summary) {
+    projectContextExportMessage.value = 'Project was not found.'
+    return
+  }
+
+  const current = getProjectDefaultCommands(key)
+  const input = window.prompt(
+    `Default commands for "${summary.label}", separated by commas. Leave blank to clear. These prefill future tasks bound to this project that have no commands yet.`,
+    current.join(', ')
+  )
+
+  // Cancel (null) leaves the saved defaults untouched; an empty string clears them.
+  if (input === null) {
+    return
+  }
+
+  const commands = input
+    .split(',')
+    .map((command) => command.trim())
+    .filter(Boolean)
+
+  setProjectDefaultCommands(key, commands)
+  projectContextExportMessage.value =
+    commands.length > 0
+      ? `Saved ${commands.length} default command${commands.length === 1 ? '' : 's'} for "${summary.label}".`
+      : `Cleared default commands for "${summary.label}".`
 }
 
 function saveSelectedTaskAsTemplate(): void {
@@ -616,11 +654,13 @@ async function revealLastDir(): Promise<void> {
       v-if="hasProjectDashboard"
       :summaries="projectSummaries"
       :selected-key="selectedProjectKey"
+      :default-command-keys="projectDefaultCommandKeys"
       @select="setProjectFilter"
       @copy="copyProjectGroupContext"
       @export="exportProjectGroupContext"
       @export-local-todo="exportProjectLocalTodo"
       @set-repo-path="setProjectRepoPathFromDashboard"
+      @set-default-commands="setProjectDefaultCommandsFromDashboard"
     />
 
     <section class="filter-bar" aria-labelledby="filter-title">

@@ -4,6 +4,7 @@ import type { ProjectSummary } from '../domain/projectSummary'
 const props = defineProps<{
   summaries: ProjectSummary[]
   selectedKey: string | null
+  defaultCommandKeys?: string[]
 }>()
 
 const emit = defineEmits<{
@@ -12,6 +13,7 @@ const emit = defineEmits<{
   export: [key: string]
   exportLocalTodo: [key: string]
   setRepoPath: [key: string]
+  setDefaultCommands: [key: string]
 }>()
 
 function hasSingleRepoPath(summary: ProjectSummary): boolean {
@@ -20,6 +22,16 @@ function hasSingleRepoPath(summary: ProjectSummary): boolean {
     .filter((repoPath): repoPath is string => typeof repoPath === 'string' && repoPath.trim().length > 0)
 
   return new Set(repoPaths).size === 1
+}
+
+// Default commands only make sense for a real project group, not the catch-all
+// "no project" bucket (which has neither a name nor a repo path).
+function canHaveDefaultCommands(summary: ProjectSummary): boolean {
+  return Boolean(summary.projectName || summary.repoPath)
+}
+
+function hasDefaultCommands(summary: ProjectSummary): boolean {
+  return props.defaultCommandKeys?.includes(summary.key) ?? false
 }
 
 function selectProject(key: string): void {
@@ -72,6 +84,14 @@ function selectProject(key: string): void {
         <div class="project-card-actions">
           <button type="button" class="ghost-button" @click="emit('setRepoPath', summary.key)">
             Set repo path
+          </button>
+          <button
+            v-if="canHaveDefaultCommands(summary)"
+            type="button"
+            class="ghost-button"
+            @click="emit('setDefaultCommands', summary.key)"
+          >
+            {{ hasDefaultCommands(summary) ? 'Edit default commands' : 'Set default commands' }}
           </button>
           <button type="button" class="ghost-button" @click="emit('copy', summary.key)">
             Copy context

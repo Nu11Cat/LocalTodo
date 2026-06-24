@@ -39,7 +39,19 @@ import {
   type TaskStatus,
   type TaskType
 } from '@renderer/domain/taskModel'
-import { findProjectSummary, summarizeProjects, unassignedProjectKey } from '@renderer/domain/projectSummary'
+import {
+  composeProjectKey,
+  findProjectSummary,
+  summarizeProjects,
+  unassignedProjectKey
+} from '@renderer/domain/projectSummary'
+import {
+  findProjectDefaultCommands,
+  parseProjectDefaultCommands,
+  serializeProjectDefaultCommands,
+  upsertProjectDefaultCommands,
+  type ProjectDefaultCommands
+} from '@renderer/domain/projectDefaultCommands'
 import { migrateStoredTasks } from '@renderer/domain/taskMigration'
 import {
   buildTaskInputFromTemplate,
@@ -58,6 +70,7 @@ import {
 const storageKey = 'localtodo.todos'
 const savedViewsStorageKey = 'localtodo.savedViews'
 const customTemplatesStorageKey = 'localtodo.customTemplates'
+const projectDefaultCommandsStorageKey = 'localtodo.projectDefaultCommands'
 const projectContextFileName = 'AI_CONTEXT.md'
 const saveDebounceMs = 300
 
@@ -232,6 +245,27 @@ function persistCustomTemplates(templates: CustomTemplate[]): void {
   }
 }
 
+// Project-level default commands, like saved views and custom templates, are a
+// local preference that always lives in localStorage and never goes through the
+// data file / window.api persistence path.
+function loadProjectDefaultCommands(): ProjectDefaultCommands[] {
+  try {
+    return parseProjectDefaultCommands(
+      JSON.parse(localStorage.getItem(projectDefaultCommandsStorageKey) ?? 'null')
+    )
+  } catch {
+    return []
+  }
+}
+
+function persistProjectDefaultCommands(entries: ProjectDefaultCommands[]): void {
+  try {
+    localStorage.setItem(projectDefaultCommandsStorageKey, serializeProjectDefaultCommands(entries))
+  } catch {
+    // Ignore localStorage persistence errors.
+  }
+}
+
 async function loadTodos(): Promise<LoadTodosResult> {
   if (!window.api?.loadData) {
     return { status: 'loaded', tasks: loadLegacyTodos() }
@@ -296,6 +330,7 @@ export function useTodos() {
   const sortState = ref<TaskSortState>(createDefaultTaskSortState())
   const savedViews = ref<SavedView[]>(loadSavedViews())
   const customTemplates = ref<CustomTemplate[]>(loadCustomTemplates())
+  const projectDefaultCommands = ref<ProjectDefaultCommands[]>(loadProjectDefaultCommands())
   const dataFileInfo = ref<DataFileInfo | null>(null)
   const isLoaded = ref(false)
   const loadErrorMessage = ref('')
@@ -506,6 +541,20 @@ export function useTodos() {
       ? sanitizeOptionalTaskString(patch.repoPath)
       : currentTodo.repoPath
 
+    // When a task is (re)bound to a project and has no commands of its own, seed
+    // it with that project's saved default commands. Only fires when the binding
+    // actually changed and the caller isn't setting commands explicitly, so it
+    // never overwrites existing commands or fights a manual edit.
+    const bindingChanged = projectName !== currentTodo.projectName || repoPath !== currentTodo.repoPath
+    const commands = hasPatchKey('commands', patch)
+      ? sanitizeTaskStringList(patch.commands)
+      : bindingChanged && currentTodo.commands.length === 0
+        ? (findProjectDefaultCommands(
+            projectDefaultCommands.value,
+            composeProjectKey(projectName, repoPath)
+          )?.commands ?? currentTodo.commands)
+        : currentTodo.commands
+
     todos.value[todoIndex] = createTask({
       ...currentTodo,
       ...patch,
@@ -515,7 +564,7 @@ export function useTodos() {
       relatedFiles: hasPatchKey('relatedFiles', patch)
         ? sanitizeTaskStringList(patch.relatedFiles)
         : currentTodo.relatedFiles,
-      commands: hasPatchKey('commands', patch) ? sanitizeTaskStringList(patch.commands) : currentTodo.commands,
+      commands,
       id: currentTodo.id,
       createdAt: currentTodo.createdAt,
       updatedAt: new Date().toISOString()
@@ -743,6 +792,21 @@ export function useTodos() {
     if (selectedTemplateId.value === id) {
       selectedTemplateId.value = 'blank'
     }
+  }
+
+  // The saved default commands for a project key, or [] if none are configured.
+  function getProjectDefaultCommands(key: string): string[] {
+    return findProjectDefaultCommands(projectDefaultCommands.value, key)?.commands ?? []
+  }
+
+  // Save (or clear, when commands is empty) the default commands for a project key.
+  // These are applied to future tasks bound to this project that have no commands.
+  function setProjectDefaultCommands(key: string, commands: string[]): void {
+    projectDefaultCommands.value = upsertProjectDefaultCommands(
+      projectDefaultCommands.value,
+      key,
+      commands
+    )
   }
 
   async function copyTaskAiContext(
@@ -1024,6 +1088,14 @@ export function useTodos() {
     { deep: true }
   )
 
+  watch(
+    projectDefaultCommands,
+    (entries) => {
+      persistProjectDefaultCommands(entries)
+    },
+    { deep: true }
+  )
+
   return {
     todos,
     draftTitle,
@@ -1032,6 +1104,9 @@ export function useTodos() {
     customTemplates,
     saveTaskAsTemplate,
     deleteCustomTemplate,
+    projectDefaultCommands,
+    getProjectDefaultCommands,
+    setProjectDefaultCommands,
     selectedTodoId,
     filterState,
     sortState,

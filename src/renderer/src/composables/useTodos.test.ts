@@ -1806,4 +1806,94 @@ describe('useTodos data file info', () => {
     expect(todos.availableTemplates.value.some((template) => template.id === saved.id)).toBe(false)
     expect(todos.selectedTemplateId.value).toBe('blank')
   })
+
+  it('auto-fills a task with the project default commands when it binds to that project with no commands', async () => {
+    const todos = useTodos()
+    await todos.loaded
+
+    todos.setProjectDefaultCommands('Acme\nG:/acme', ['npm run lint', 'npm test'])
+
+    todos.draftTitle.value = 'New work'
+    todos.addTodo()
+    const taskId = todos.todos.value[0].id
+
+    todos.updateTodo(taskId, { projectName: 'Acme', repoPath: 'G:/acme' })
+
+    expect(todos.todos.value[0].commands).toEqual(['npm run lint', 'npm test'])
+  })
+
+  it('does not overwrite existing commands when binding to a project with defaults', async () => {
+    const todos = useTodos()
+    await todos.loaded
+
+    todos.setProjectDefaultCommands('Acme\nG:/acme', ['npm run lint'])
+
+    todos.draftTitle.value = 'Has commands'
+    todos.addTodo()
+    const taskId = todos.todos.value[0].id
+    todos.updateTodo(taskId, { commands: ['custom command'] })
+
+    todos.updateTodo(taskId, { projectName: 'Acme', repoPath: 'G:/acme' })
+
+    expect(todos.todos.value[0].commands).toEqual(['custom command'])
+  })
+
+  it('does not auto-fill when an update sets commands explicitly alongside the binding', async () => {
+    const todos = useTodos()
+    await todos.loaded
+
+    todos.setProjectDefaultCommands('Acme\nG:/acme', ['npm run lint'])
+
+    todos.draftTitle.value = 'Explicit commands'
+    todos.addTodo()
+    const taskId = todos.todos.value[0].id
+
+    todos.updateTodo(taskId, { projectName: 'Acme', repoPath: 'G:/acme', commands: [] })
+
+    expect(todos.todos.value[0].commands).toEqual([])
+  })
+
+  it('does not auto-fill when the binding is unchanged', async () => {
+    const todos = useTodos()
+    await todos.loaded
+
+    todos.draftTitle.value = 'Bound first'
+    todos.addTodo()
+    const taskId = todos.todos.value[0].id
+    todos.updateTodo(taskId, { projectName: 'Acme', repoPath: 'G:/acme' })
+
+    // Configure defaults only after the task is already bound.
+    todos.setProjectDefaultCommands('Acme\nG:/acme', ['npm run lint'])
+    todos.updateTodo(taskId, { priority: 'high' })
+
+    expect(todos.todos.value[0].commands).toEqual([])
+  })
+
+  it('clears project default commands when set to an empty list', async () => {
+    const todos = useTodos()
+    await todos.loaded
+
+    todos.setProjectDefaultCommands('Acme\nG:/acme', ['npm test'])
+    expect(todos.getProjectDefaultCommands('Acme\nG:/acme')).toEqual(['npm test'])
+
+    todos.setProjectDefaultCommands('Acme\nG:/acme', [])
+    expect(todos.getProjectDefaultCommands('Acme\nG:/acme')).toEqual([])
+  })
+
+  it('persists project default commands to localStorage and reloads them', async () => {
+    const first = useTodos()
+    await first.loaded
+
+    first.setProjectDefaultCommands('Acme\nG:/acme', ['npm run lint', 'npm test'])
+    await nextTick()
+
+    expect(storage.get('localtodo.projectDefaultCommands')).toBe(
+      JSON.stringify([{ key: 'Acme\nG:/acme', commands: ['npm run lint', 'npm test'] }])
+    )
+
+    const second = useTodos()
+    await second.loaded
+
+    expect(second.getProjectDefaultCommands('Acme\nG:/acme')).toEqual(['npm run lint', 'npm test'])
+  })
 })

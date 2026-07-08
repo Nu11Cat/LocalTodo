@@ -13,6 +13,19 @@ export const zh = {
   'theme.dark': '深色',
   'theme.system': '跟随系统',
 
+  // Workspace shell: three-column titlebar / sidebar / statusbar
+  'nav.views': '视图',
+  'nav.status': '状态',
+  'nav.projects': '项目',
+  'nav.savedViews': '已存视图',
+  'nav.collapse': '折叠导航',
+  'nav.expand': '展开导航',
+  'nav.allTasks': '全部任务',
+  'titlebar.dataActions': '数据',
+  'statusbar.dataFile': '数据文件',
+  'statusbar.savedAt': '保存于 {time}',
+  'statusbar.tasks': '{active} 进行中 · {done} 已完成',
+
   // New-todo form
   'form.newTodo': '新建任务',
   'form.titlePlaceholder': '需要做什么？',

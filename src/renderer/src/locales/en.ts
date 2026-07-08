@@ -13,6 +13,19 @@ export const en = {
   'theme.dark': 'Dark',
   'theme.system': 'System',
 
+  // Workspace shell: three-column titlebar / sidebar / statusbar
+  'nav.views': 'Views',
+  'nav.status': 'Status',
+  'nav.projects': 'Projects',
+  'nav.savedViews': 'Saved views',
+  'nav.collapse': 'Collapse navigation',
+  'nav.expand': 'Expand navigation',
+  'nav.allTasks': 'All tasks',
+  'titlebar.dataActions': 'Data',
+  'statusbar.dataFile': 'Data file',
+  'statusbar.savedAt': 'Saved {time}',
+  'statusbar.tasks': '{active} active · {done} done',
+
   // New-todo form
   'form.newTodo': 'New todo',
   'form.titlePlaceholder': 'What needs to be done?',

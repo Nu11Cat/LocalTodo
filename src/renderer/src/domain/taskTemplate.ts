@@ -109,6 +109,13 @@ export function findTaskTemplate(id: string): TaskTemplate | undefined {
   return taskTemplates.find((template) => template.id === id)
 }
 
+// True for the built-in five templates (blank/bug/feature/refactor/release).
+// Consumers use this to decide whether to translate the label via a locale key
+// (built-ins) or render it verbatim (custom templates use user-supplied names).
+export function isBuiltinTaskTemplateId(id: string): boolean {
+  return taskTemplates.some((template) => template.id === id)
+}
+
 export function buildTaskInputFromTemplate(template: TaskTemplate, title: string): CreateTaskInput {
   const input: CreateTaskInput = { title }
 

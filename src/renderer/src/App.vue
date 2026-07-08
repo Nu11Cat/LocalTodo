@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, nextTick, ref } from 'vue'
 import TaskDetailPanel from './components/TaskDetailPanel.vue'
 import TodoRow from './components/TodoRow.vue'
 import AppTitlebar from './components/AppTitlebar.vue'
@@ -249,7 +249,7 @@ function updateSelectedTodo(patch: Parameters<typeof updateTodo>[1]): void {
 type ListKind = 'active' | 'completed'
 type NavDirection = 'up' | 'down' | 'home' | 'end'
 
-function navigateTodoList(list: ListKind, direction: NavDirection): void {
+async function navigateTodoList(list: ListKind, direction: NavDirection): Promise<void> {
   const rows = list === 'active' ? activeTodos.value : completedTodos.value
 
   if (rows.length === 0) {
@@ -277,29 +277,47 @@ function navigateTodoList(list: ListKind, direction: NavDirection): void {
 
   if (nextTodo && nextTodo.id !== selectedTodoId.value) {
     selectTodo(nextTodo.id)
+
+    // aria-activedescendant does not move DOM focus, so the browser has no
+    // reason to scroll the newly-active option into view. Wait for the row's
+    // `.is-selected` class to render, then nudge it into the viewport — 'nearest'
+    // avoids yanking the pane when the row is already fully visible.
+    await nextTick()
+    document
+      .getElementById(`todo-row-${nextTodo.id}`)
+      ?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
   }
 }
 
 // ArrowUp/Down/Home/End drive selection; call preventDefault so the browser
 // doesn't also scroll the whole grid pane. Space/Enter are already handled by
 // native <button>/<input type=checkbox> focus, so we don't intercept them here.
+//
+// Bail out on any modifier — Ctrl+Home means "top of document", Cmd+Arrow on
+// macOS jumps to line ends, Alt+Arrow is reserved by browsers/OS, and
+// Shift+Arrow is the range-select convention. Swallowing those would break
+// muscle memory the user brought in from every other app.
 function onTodoListKeydown(list: ListKind, event: KeyboardEvent): void {
+  if (event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) {
+    return
+  }
+
   switch (event.key) {
     case 'ArrowDown':
       event.preventDefault()
-      navigateTodoList(list, 'down')
+      void navigateTodoList(list, 'down')
       break
     case 'ArrowUp':
       event.preventDefault()
-      navigateTodoList(list, 'up')
+      void navigateTodoList(list, 'up')
       break
     case 'Home':
       event.preventDefault()
-      navigateTodoList(list, 'home')
+      void navigateTodoList(list, 'home')
       break
     case 'End':
       event.preventDefault()
-      navigateTodoList(list, 'end')
+      void navigateTodoList(list, 'end')
       break
     default:
       break

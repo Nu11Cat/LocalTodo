@@ -913,6 +913,9 @@ h2 {
 .todo-list:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
+  /* Intentional literal — the `--radius-*` scale starts at 8px, which visually
+     doubles this thin outline's corner. 4px matches the 2px stroke width so
+     the ring reads as a tight rectangle around the list, not a pill. */
   border-radius: 4px;
 }
 

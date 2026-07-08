@@ -8,7 +8,9 @@
 // The row itself is the listbox option — `role="option"` with `aria-selected`
 // live on the <li>. The parent `<ul role="listbox">` is what makes the
 // `aria-selected` attribute a legitimate a11y hook rather than a hint that
-// screen readers ignore.
+// screen readers ignore. The stable DOM id `todo-row-<id>` is targeted by the
+// listbox's `aria-activedescendant`, so keyboard nav announces without moving
+// DOM focus off the <ul>.
 import { useLocale } from '@renderer/composables/useLocale'
 import type { Task } from '@renderer/domain/taskModel'
 
@@ -31,6 +33,7 @@ const { t } = useLocale()
 
 <template>
   <li
+    :id="`todo-row-${todo.id}`"
     class="todo-item"
     :class="{ 'is-selected': selected }"
     :data-priority="todo.priority"

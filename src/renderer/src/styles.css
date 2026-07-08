@@ -903,6 +903,19 @@ h2 {
   list-style: none;
 }
 
+/* Focus ring for the listbox itself — arrow-key navigation lands focus on the
+   <ul> (aria-activedescendant model), and a keyboard user needs a hint that
+   the list is now driving. Kept subtle so mouse users never see it. */
+.todo-list:focus {
+  outline: none;
+}
+
+.todo-list:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
 /* Phase C — IDEA/Cursor file-tree row density.
    - Single-line (28px effective height) with hover/selected states.
    - Left `::before` renders a 3px priority color bar via [data-priority].

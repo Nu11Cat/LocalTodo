@@ -240,6 +240,87 @@ function updateSelectedTodo(patch: Parameters<typeof updateTodo>[1]): void {
   }
 }
 
+// Keyboard navigation for the two `role="listbox"` panels. Each list navigates
+// independently — Down at the end of Active does NOT wrap into Completed, since
+// crossing a section boundary from a plain arrow-key press reads as a bug more
+// often than a feature (and hitting Home/End in the wrong list is easy). When
+// the current selection is in the other list (or nothing is selected), Down
+// picks the first row of THIS list, Up picks the last.
+type ListKind = 'active' | 'completed'
+type NavDirection = 'up' | 'down' | 'home' | 'end'
+
+function navigateTodoList(list: ListKind, direction: NavDirection): void {
+  const rows = list === 'active' ? activeTodos.value : completedTodos.value
+
+  if (rows.length === 0) {
+    return
+  }
+
+  const currentIndex = rows.findIndex((todo) => todo.id === selectedTodoId.value)
+
+  let nextIndex: number
+
+  if (direction === 'home') {
+    nextIndex = 0
+  } else if (direction === 'end') {
+    nextIndex = rows.length - 1
+  } else if (currentIndex === -1) {
+    // Selection is in the other list or unset — enter this list at the natural end.
+    nextIndex = direction === 'down' ? 0 : rows.length - 1
+  } else if (direction === 'down') {
+    nextIndex = Math.min(currentIndex + 1, rows.length - 1)
+  } else {
+    nextIndex = Math.max(currentIndex - 1, 0)
+  }
+
+  const nextTodo = rows[nextIndex]
+
+  if (nextTodo && nextTodo.id !== selectedTodoId.value) {
+    selectTodo(nextTodo.id)
+  }
+}
+
+// ArrowUp/Down/Home/End drive selection; call preventDefault so the browser
+// doesn't also scroll the whole grid pane. Space/Enter are already handled by
+// native <button>/<input type=checkbox> focus, so we don't intercept them here.
+function onTodoListKeydown(list: ListKind, event: KeyboardEvent): void {
+  switch (event.key) {
+    case 'ArrowDown':
+      event.preventDefault()
+      navigateTodoList(list, 'down')
+      break
+    case 'ArrowUp':
+      event.preventDefault()
+      navigateTodoList(list, 'up')
+      break
+    case 'Home':
+      event.preventDefault()
+      navigateTodoList(list, 'home')
+      break
+    case 'End':
+      event.preventDefault()
+      navigateTodoList(list, 'end')
+      break
+    default:
+      break
+  }
+}
+
+// aria-activedescendant needs the id only when the selection is actually inside
+// THIS list — otherwise SR would announce a row that isn't visually highlighted
+// in the focused listbox. Returns undefined so Vue skips the attribute.
+function activeDescendantFor(list: ListKind): string | undefined {
+  const rows = list === 'active' ? activeTodos.value : completedTodos.value
+
+  if (!selectedTodoId.value) {
+    return undefined
+  }
+
+  const hit = rows.find((todo) => todo.id === selectedTodoId.value)
+
+  return hit ? `todo-row-${hit.id}` : undefined
+}
+
 function changeSortKey(key: TaskSortKey): void {
   setSortState({ key, direction: sortState.value.direction })
 }
@@ -676,7 +757,15 @@ async function revealLastAiContextFile(): Promise<void> {
           <p v-if="activeTodos.length === 0" class="empty-state">
             {{ hasActiveFilters ? t('panel.noActiveMatch') : t('panel.noActive') }}
           </p>
-          <ul v-else class="todo-list" role="listbox" :aria-label="t('panel.active')">
+          <ul
+            v-else
+            class="todo-list"
+            role="listbox"
+            tabindex="0"
+            :aria-label="t('panel.active')"
+            :aria-activedescendant="activeDescendantFor('active')"
+            @keydown="onTodoListKeydown('active', $event)"
+          >
             <TodoRow
               v-for="todo in activeTodos"
               :key="todo.id"
@@ -711,7 +800,10 @@ async function revealLastAiContextFile(): Promise<void> {
             v-else
             class="todo-list completed-list"
             role="listbox"
+            tabindex="0"
             :aria-label="t('panel.completed')"
+            :aria-activedescendant="activeDescendantFor('completed')"
+            @keydown="onTodoListKeydown('completed', $event)"
           >
             <TodoRow
               v-for="todo in completedTodos"

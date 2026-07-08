@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import TaskDetailPanel from './components/TaskDetailPanel.vue'
+import TodoRow from './components/TodoRow.vue'
 import AppTitlebar from './components/AppTitlebar.vue'
 import AppSidebar from './components/AppSidebar.vue'
 import AppStatusbar from './components/AppStatusbar.vue'
@@ -675,28 +676,17 @@ async function revealLastAiContextFile(): Promise<void> {
           <p v-if="activeTodos.length === 0" class="empty-state">
             {{ hasActiveFilters ? t('panel.noActiveMatch') : t('panel.noActive') }}
           </p>
-          <ul v-else class="todo-list">
-            <li
+          <ul v-else class="todo-list" role="listbox" :aria-label="t('panel.active')">
+            <TodoRow
               v-for="todo in activeTodos"
               :key="todo.id"
-              class="todo-item"
-              :class="{ 'is-selected': selectedTodoId === todo.id }"
-              :data-priority="todo.priority"
-              :aria-selected="selectedTodoId === todo.id"
-            >
-              <label>
-                <input type="checkbox" :checked="todo.status === 'done'" @change="toggleTodo(todo.id)" />
-                <span>{{ todo.title }}</span>
-                <span v-if="todo.sensitive" class="sensitive-badge">{{ t('todo.sensitive') }}</span>
-              </label>
-              <div class="todo-actions">
-                <button type="button" class="ghost-button" @click="selectTodo(todo.id)">{{ t('todo.edit') }}</button>
-                <button type="button" class="ghost-button" @click="copyTodoContext(todo.id)">
-                  {{ t('todo.copyAiContext') }}
-                </button>
-                <button type="button" class="ghost-button" @click="removeTodo(todo.id)">{{ t('todo.remove') }}</button>
-              </div>
-            </li>
+              :todo="todo"
+              :selected="selectedTodoId === todo.id"
+              @toggle="toggleTodo"
+              @select="selectTodo"
+              @copy="copyTodoContext"
+              @remove="removeTodo"
+            />
           </ul>
         </section>
 
@@ -717,28 +707,22 @@ async function revealLastAiContextFile(): Promise<void> {
           <p v-if="completedTodos.length === 0" class="empty-state">
             {{ hasActiveFilters ? t('panel.noCompletedMatch') : t('panel.noCompleted') }}
           </p>
-          <ul v-else class="todo-list completed-list">
-            <li
+          <ul
+            v-else
+            class="todo-list completed-list"
+            role="listbox"
+            :aria-label="t('panel.completed')"
+          >
+            <TodoRow
               v-for="todo in completedTodos"
               :key="todo.id"
-              class="todo-item"
-              :class="{ 'is-selected': selectedTodoId === todo.id }"
-              :data-priority="todo.priority"
-              :aria-selected="selectedTodoId === todo.id"
-            >
-              <label>
-                <input type="checkbox" :checked="todo.status === 'done'" @change="toggleTodo(todo.id)" />
-                <span>{{ todo.title }}</span>
-                <span v-if="todo.sensitive" class="sensitive-badge">{{ t('todo.sensitive') }}</span>
-              </label>
-              <div class="todo-actions">
-                <button type="button" class="ghost-button" @click="selectTodo(todo.id)">{{ t('todo.edit') }}</button>
-                <button type="button" class="ghost-button" @click="copyTodoContext(todo.id)">
-                  {{ t('todo.copyAiContext') }}
-                </button>
-                <button type="button" class="ghost-button" @click="removeTodo(todo.id)">{{ t('todo.remove') }}</button>
-              </div>
-            </li>
+              :todo="todo"
+              :selected="selectedTodoId === todo.id"
+              @toggle="toggleTodo"
+              @select="selectTodo"
+              @copy="copyTodoContext"
+              @remove="removeTodo"
+            />
           </ul>
         </section>
       </div>

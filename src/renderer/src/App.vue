@@ -247,9 +247,60 @@ function updateSelectedTodo(patch: Parameters<typeof updateTodo>[1]): void {
 // the current selection is in the other list (or nothing is selected), Down
 // picks the first row of THIS list, Up picks the last.
 type ListKind = 'active' | 'completed'
-type NavDirection = 'up' | 'down' | 'home' | 'end'
+type NavDirection = 'up' | 'down' | 'home' | 'end' | 'pageup' | 'pagedown'
 
-async function navigateTodoList(list: ListKind, direction: NavDirection): Promise<void> {
+// One row of overlap between pages keeps the eye anchored — Page Down feels
+// like a scroll instead of a teleport. Fallback of 10 covers the pre-mount
+// case (list not yet laid out) and any zero-height edge; matches VS Code's
+// step when the panel is small.
+const PAGE_SIZE_FALLBACK = 10
+
+// The <ul.todo-list> is NOT the scroll container — it has no max-height /
+// overflow, so its clientHeight equals the natural content height (i.e. all
+// rows stacked). The scroller is an ancestor (`.app-workspace-main`,
+// overflow-y: auto). Walk up until we find whichever element actually clips
+// overflow; fall back to the viewport if nothing does. Without this, PageDown
+// from row 0 collapses to End for any list longer than ~2 rows.
+function findScrollParent(element: HTMLElement): HTMLElement | null {
+  let node: HTMLElement | null = element.parentElement
+
+  while (node) {
+    const overflowY = getComputedStyle(node).overflowY
+    if (overflowY === 'auto' || overflowY === 'scroll') {
+      return node
+    }
+    node = node.parentElement
+  }
+
+  return null
+}
+
+function pageSizeFor(listElement: HTMLElement | null): number {
+  if (!listElement) {
+    return PAGE_SIZE_FALLBACK
+  }
+
+  // Query for `.todo-item` explicitly rather than firstElementChild — future
+  // sentinel rows (empty state, load-more, group header) inside the <ul> would
+  // silently poison a positional lookup.
+  const firstRow = listElement.querySelector<HTMLElement>('.todo-item')
+  const rowHeight = firstRow?.offsetHeight ?? 0
+
+  if (rowHeight <= 0) {
+    return PAGE_SIZE_FALLBACK
+  }
+
+  const scroller = findScrollParent(listElement)
+  const viewport = scroller?.clientHeight ?? window.innerHeight
+
+  return Math.max(1, Math.floor(viewport / rowHeight) - 1)
+}
+
+async function navigateTodoList(
+  list: ListKind,
+  direction: NavDirection,
+  listElement: HTMLElement | null = null
+): Promise<void> {
   const rows = list === 'active' ? activeTodos.value : completedTodos.value
 
   if (rows.length === 0) {
@@ -266,11 +317,17 @@ async function navigateTodoList(list: ListKind, direction: NavDirection): Promis
     nextIndex = rows.length - 1
   } else if (currentIndex === -1) {
     // Selection is in the other list or unset — enter this list at the natural end.
-    nextIndex = direction === 'down' ? 0 : rows.length - 1
+    // Page keys behave like Down/Up in this cold-start case (jumping a page from
+    // "nowhere" would just be Home/End with extra steps).
+    nextIndex = direction === 'down' || direction === 'pagedown' ? 0 : rows.length - 1
   } else if (direction === 'down') {
     nextIndex = Math.min(currentIndex + 1, rows.length - 1)
-  } else {
+  } else if (direction === 'up') {
     nextIndex = Math.max(currentIndex - 1, 0)
+  } else if (direction === 'pagedown') {
+    nextIndex = Math.min(currentIndex + pageSizeFor(listElement), rows.length - 1)
+  } else {
+    nextIndex = Math.max(currentIndex - pageSizeFor(listElement), 0)
   }
 
   const nextTodo = rows[nextIndex]
@@ -289,9 +346,10 @@ async function navigateTodoList(list: ListKind, direction: NavDirection): Promis
   }
 }
 
-// ArrowUp/Down/Home/End drive selection; call preventDefault so the browser
-// doesn't also scroll the whole grid pane. Space/Enter are already handled by
-// native <button>/<input type=checkbox> focus, so we don't intercept them here.
+// ArrowUp/Down/Home/End/PageUp/PageDown drive selection; call preventDefault so
+// the browser doesn't also scroll the whole grid pane. Space/Enter are already
+// handled by native <button>/<input type=checkbox> focus, so we don't intercept
+// them here.
 //
 // Bail out on any modifier — Ctrl+Home means "top of document", Cmd+Arrow on
 // macOS jumps to line ends, Alt+Arrow is reserved by browsers/OS, and
@@ -302,22 +360,37 @@ function onTodoListKeydown(list: ListKind, event: KeyboardEvent): void {
     return
   }
 
+  // currentTarget is the <ul> the listener is bound to — Vue's runtime
+  // guarantees this even after event delegation. Cast is safe because we only
+  // attach this handler to <ul role="listbox">. Read synchronously into a
+  // local: `event.currentTarget` becomes null after the first `await` in
+  // navigateTodoList (the browser nulls it once dispatch ends).
+  const listElement = event.currentTarget as HTMLElement | null
+
   switch (event.key) {
     case 'ArrowDown':
       event.preventDefault()
-      void navigateTodoList(list, 'down')
+      void navigateTodoList(list, 'down', listElement)
       break
     case 'ArrowUp':
       event.preventDefault()
-      void navigateTodoList(list, 'up')
+      void navigateTodoList(list, 'up', listElement)
       break
     case 'Home':
       event.preventDefault()
-      void navigateTodoList(list, 'home')
+      void navigateTodoList(list, 'home', listElement)
       break
     case 'End':
       event.preventDefault()
-      void navigateTodoList(list, 'end')
+      void navigateTodoList(list, 'end', listElement)
+      break
+    case 'PageDown':
+      event.preventDefault()
+      void navigateTodoList(list, 'pagedown', listElement)
+      break
+    case 'PageUp':
+      event.preventDefault()
+      void navigateTodoList(list, 'pageup', listElement)
       break
     default:
       break

@@ -2,15 +2,35 @@
 import { computed, ref } from 'vue'
 import ProjectDashboard from './components/ProjectDashboard.vue'
 import TaskDetailPanel from './components/TaskDetailPanel.vue'
+import AppTitlebar from './components/AppTitlebar.vue'
+import AppSidebar from './components/AppSidebar.vue'
+import AppStatusbar from './components/AppStatusbar.vue'
+import SplitPane from './components/SplitPane.vue'
 import { useTodos } from './composables/useTodos'
 import { useLocale, availableLocales } from './composables/useLocale'
 import { useTheme, availableThemes } from './composables/useTheme'
+import { useLayout, navWidthMin, navWidthMax, detailWidthMin, detailWidthMax } from './composables/useLayout'
 import type { MessageKey } from './locales/en'
 import { taskPriorities, taskStatuses, taskTypes } from './domain/taskModel'
 import type { TaskSortKey } from './domain/taskSort'
 
 const { t, locale, setLocale } = useLocale()
 const { theme, setTheme, applyTheme } = useTheme()
+const {
+  navWidth,
+  detailWidth,
+  navCollapsed,
+  setNavWidth,
+  setDetailWidth,
+  toggleNavCollapsed
+} = useLayout()
+
+// Inline CSS vars threaded to the workspace grid so useLayout's reactive widths
+// drive `grid-template-columns` directly (no per-column style attribute).
+const workspaceStyle = computed(() => ({
+  '--nav-w': `${navWidth.value}px`,
+  '--detail-w': `${detailWidth.value}px`
+}))
 
 // Reflect the persisted/system theme onto <html> as soon as the app script runs.
 applyTheme()
@@ -639,8 +659,24 @@ async function revealLastDir(): Promise<void> {
 </script>
 
 <template>
-  <main class="app-shell">
-    <section class="hero-card" aria-labelledby="app-title">
+  <div class="app-workspace" :class="{ 'is-nav-collapsed': navCollapsed }" :style="workspaceStyle">
+    <AppTitlebar />
+
+    <AppSidebar :collapsed="navCollapsed" @toggle-collapsed="toggleNavCollapsed" />
+
+    <SplitPane
+      class="app-workspace-nav-split"
+      :size="navWidth"
+      :min="navWidthMin"
+      :max="navWidthMax"
+      origin="left"
+      aria-label="Resize navigation column"
+      @update:size="setNavWidth"
+    />
+
+    <main class="app-workspace-main">
+      <div class="app-shell">
+        <section class="hero-card" aria-labelledby="app-title">
       <div class="hero-top">
         <p class="eyebrow">{{ t('app.eyebrow') }}</p>
         <div class="hero-switchers">
@@ -1005,16 +1041,32 @@ async function revealLastDir(): Promise<void> {
         </li>
       </ul>
     </section>
+      </div>
+    </main>
 
-    <TaskDetailPanel
-      :task="selectedTodo"
-      :all-tasks="todos"
-      @update="updateSelectedTodo"
-      @add-note="addNoteToSelectedTodo"
-      @remove-note="removeNoteFromSelectedTodo"
-      @close="selectTodo(null)"
-      @copy="copySelectedTodoContext"
-      @save-as-template="saveSelectedTaskAsTemplate"
+    <SplitPane
+      class="app-workspace-detail-split"
+      :size="detailWidth"
+      :min="detailWidthMin"
+      :max="detailWidthMax"
+      origin="right"
+      aria-label="Resize detail column"
+      @update:size="setDetailWidth"
     />
-  </main>
+
+    <aside class="app-workspace-detail" aria-label="Task detail">
+      <TaskDetailPanel
+        :task="selectedTodo"
+        :all-tasks="todos"
+        @update="updateSelectedTodo"
+        @add-note="addNoteToSelectedTodo"
+        @remove-note="removeNoteFromSelectedTodo"
+        @close="selectTodo(null)"
+        @copy="copySelectedTodoContext"
+        @save-as-template="saveSelectedTaskAsTemplate"
+      />
+    </aside>
+
+    <AppStatusbar />
+  </div>
 </template>

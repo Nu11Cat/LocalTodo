@@ -70,6 +70,17 @@
   --fs-label: 0.82rem; /* field / filter labels */
   --fs-xs: 0.78rem; /* chips, badges, meta */
 
+  /* Workspace layout ---
+     Three-column IDE-style shell (titlebar / nav | main | detail / statusbar).
+     Column widths themselves live in useLayout.ts (driven by drag + persisted
+     to localStorage) and are threaded onto .app-workspace as inline
+     --nav-w / --detail-w — the tokens here only cover fixed layout dimensions
+     (heights of the top/bottom strips, collapsed nav width, splitter hit area). */
+  --titlebar-h: 48px;
+  --statusbar-h: 28px;
+  --nav-w-collapsed: 56px;
+  --split-hit: 8px;
+
   color-scheme: light;
   color: var(--text);
   background: var(--bg);
@@ -156,10 +167,203 @@ button {
   cursor: pointer;
 }
 
+/* --- Workspace shell ---
+   Grid: [ titlebar row ] / [ nav | split | main | split | detail ] / [ statusbar ].
+   Widths of the nav/detail columns come from useLayout via inline vars
+   (--nav-w, --detail-w). When the nav is collapsed, --nav-w is swapped for
+   --nav-w-collapsed on .app-workspace.is-nav-collapsed so the CSS transition
+   picks up automatically. */
+.app-workspace {
+  display: grid;
+  grid-template-columns: var(--nav-w) auto 1fr auto var(--detail-w);
+  grid-template-rows: var(--titlebar-h) 1fr var(--statusbar-h);
+  grid-template-areas:
+    "titlebar titlebar titlebar titlebar titlebar"
+    "nav      nav-split main     detail-split detail"
+    "statusbar statusbar statusbar statusbar statusbar";
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+  background: var(--bg);
+  transition: grid-template-columns 160ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-workspace {
+    transition: none;
+  }
+}
+
+.app-workspace.is-nav-collapsed {
+  grid-template-columns: var(--nav-w-collapsed) auto 1fr auto var(--detail-w);
+}
+
+.app-titlebar {
+  grid-area: titlebar;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-solid);
+  gap: 12px;
+}
+
+.app-titlebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.app-titlebar-name {
+  font-size: var(--fs-sm);
+  letter-spacing: 0.02em;
+}
+
+.app-titlebar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.app-sidebar {
+  grid-area: nav;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border-right: 1px solid var(--border);
+  background: var(--surface-2);
+  overflow: hidden;
+}
+
+.app-sidebar-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  height: 40px;
+  border-bottom: 1px solid var(--border);
+}
+
+.app-sidebar-toggle {
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 1rem;
+  padding: 4px 8px;
+  border-radius: var(--radius-xs);
+}
+
+.app-sidebar-toggle:hover {
+  background: var(--fill-muted);
+  color: var(--text);
+}
+
+.app-sidebar-title {
+  font-size: var(--fs-label);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.app-sidebar-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 8px 16px;
+}
+
+.app-sidebar-group {
+  margin-bottom: 16px;
+}
+
+.app-sidebar-group-title {
+  margin: 0 0 4px;
+  padding: 4px 8px;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.app-sidebar-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.app-sidebar-item-btn {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 4px 8px;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  font-size: var(--fs-sm);
+  border-radius: var(--radius-xs);
+  line-height: 1.5;
+}
+
+.app-sidebar-item-btn:hover {
+  background: var(--fill-muted);
+}
+
+.app-sidebar-collapsed-hint {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+}
+
+.app-workspace-main {
+  grid-area: main;
+  overflow-y: auto;
+  min-width: 0;
+  padding: 16px;
+  background: var(--bg);
+}
+
+.app-workspace-detail {
+  grid-area: detail;
+  overflow-y: auto;
+  min-width: 0;
+  border-left: 1px solid var(--border);
+  background: var(--surface-solid);
+  padding: 16px;
+}
+
+.app-workspace-nav-split {
+  grid-area: nav-split;
+}
+
+.app-workspace-detail-split {
+  grid-area: detail-split;
+}
+
+.app-statusbar {
+  grid-area: statusbar;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 16px;
+  border-top: 1px solid var(--border);
+  background: var(--surface-2);
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+
+.app-statusbar-placeholder {
+  opacity: 0.6;
+}
+
 .app-shell {
-  width: min(920px, calc(100vw - 32px));
+  width: min(920px, 100%);
   margin: 0 auto;
-  padding: 32px 0;
+  padding: 0;
 }
 
 .hero-card,

@@ -45,6 +45,18 @@
   --fill-muted: #e2e8f0;
   --fill-muted-2: #cbd5e1;
 
+  /* Priority color bar (Phase C — IDEA-style left-edge indicator on task rows).
+     Rendered as a 3px `::before` bar on `.todo-item`; keyed off `[data-priority]`.
+     Chosen for clear semantics on both light and dark surfaces. */
+  --priority-low: #94a3b8;
+  --priority-medium: #38bdf8;
+  --priority-high: #f59e0b;
+  --priority-urgent: #ef4444;
+
+  /* Task row hover tint — a soft neutral fill (independent of --accent-soft
+     which we reserve for the selected/active state). */
+  --row-hover: rgba(148, 163, 184, 0.14);
+
   /* Radius */
   --radius-xs: 8px;
   --radius-sm: 10px;
@@ -140,6 +152,16 @@
   --warning-text: #fbbf24;
   --fill-muted: #2b3645;
   --fill-muted-2: #3a475a;
+
+  /* Priority (dark) — bumped brighter for readability on deep surfaces. Low
+     is slate-400 rather than slate-500 so a 3px "low" bar stays clearly
+     distinguishable from a missing bar. */
+  --priority-low: #94a3b8;
+  --priority-medium: #38bdf8;
+  --priority-high: #fbbf24;
+  --priority-urgent: #f87171;
+
+  --row-hover: rgba(148, 163, 184, 0.08);
 
   /* Shadow */
   --shadow-card: 0 24px 70px rgba(0, 0, 0, 0.5);
@@ -699,11 +721,20 @@ h2 {
   background: var(--accent);
 }
 
-.todo-panel,
 .task-detail-panel,
 .filter-bar {
-  margin-top: 16px;
-  padding: 20px;
+  margin-top: 12px;
+  padding: 14px 16px;
+}
+
+.todo-panel {
+  margin-top: 12px;
+  padding: 10px 8px 10px 4px;
+}
+
+.todo-panel .panel-heading {
+  padding: 4px 10px 8px 14px;
+  margin-bottom: 4px;
 }
 
 .filter-bar {
@@ -864,39 +895,107 @@ h2 {
 }
 
 .todo-list {
-  display: grid;
-  gap: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
+/* Phase C — IDEA/Cursor file-tree row density.
+   - Single-line (28px effective height) with hover/selected states.
+   - Left `::before` renders a 3px priority color bar via [data-priority].
+   - Actions collapse into a hover-revealed cluster on the right so the
+     row itself stays scannable when idle.
+   - Uses logical properties (inset-inline-start / padding-inline-*) so a
+     future RTL flip keeps the bar anchored at the reading start. */
 .todo-item {
+  position: relative;
   justify-content: space-between;
-  gap: 16px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  padding: 10px 14px;
-  background: var(--surface-solid);
+  gap: 12px;
+  border: 0;
+  border-radius: var(--radius-xs);
+  padding-block: 4px;
+  padding-inline-start: 14px;
+  padding-inline-end: 10px;
+  background: transparent;
+  transition: background-color 120ms ease;
 }
 
+.todo-item::before {
+  content: '';
+  position: absolute;
+  inset-inline-start: 4px;
+  top: 6px;
+  bottom: 6px;
+  width: 3px;
+  border-radius: var(--radius-pill);
+  background: var(--priority-low);
+}
+
+.todo-item[data-priority='medium']::before { background: var(--priority-medium); }
+.todo-item[data-priority='high']::before   { background: var(--priority-high); }
+.todo-item[data-priority='urgent']::before { background: var(--priority-urgent); }
+
+.todo-item:hover {
+  background: var(--row-hover);
+}
+
+/* Selection keeps the priority bar visible (that's the whole point of it —
+   the row you're editing is the row whose urgency you most want to see).
+   The selected-affordance is instead the accent-soft background plus an
+   inset accent hairline on the reading-start edge. */
 .todo-item.is-selected {
-  border-color: var(--accent);
-  box-shadow: var(--ring-accent);
+  border: 0;
+  box-shadow: inset 3px 0 0 var(--accent);
+  background: var(--accent-soft);
 }
 
 .todo-item label {
   min-width: 0;
-  gap: 12px;
+  gap: 10px;
 }
 
 .todo-item input {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
 }
 
 .todo-item span {
   overflow-wrap: anywhere;
+  font-size: var(--fs-sm);
+  line-height: 1.4;
+}
+
+/* Hide the per-row action cluster until hover/selection — keeps the list
+   scannable. Uses opacity + pointer-events so the buttons stay in the tab
+   order: today the Edit button is the only keyboard path to select a row,
+   so Tab MUST be able to reach a hidden row's actions. `:focus-within`
+   surfaces the cluster the moment focus lands on it. */
+.todo-item .todo-actions {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease;
+}
+
+.todo-item:hover .todo-actions,
+.todo-item.is-selected .todo-actions,
+.todo-item:focus-within .todo-actions {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.todo-item .todo-actions .ghost-button {
+  padding: 3px 8px;
+  font-size: var(--fs-xs);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .todo-item,
+  .todo-item .todo-actions {
+    transition: none;
+  }
 }
 
 .completed-list span {

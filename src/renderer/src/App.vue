@@ -681,6 +681,7 @@ async function revealLastAiContextFile(): Promise<void> {
               :key="todo.id"
               class="todo-item"
               :class="{ 'is-selected': selectedTodoId === todo.id }"
+              :data-priority="todo.priority"
               :aria-selected="selectedTodoId === todo.id"
             >
               <label>
@@ -717,7 +718,14 @@ async function revealLastAiContextFile(): Promise<void> {
             {{ hasActiveFilters ? t('panel.noCompletedMatch') : t('panel.noCompleted') }}
           </p>
           <ul v-else class="todo-list completed-list">
-            <li v-for="todo in completedTodos" :key="todo.id" class="todo-item">
+            <li
+              v-for="todo in completedTodos"
+              :key="todo.id"
+              class="todo-item"
+              :class="{ 'is-selected': selectedTodoId === todo.id }"
+              :data-priority="todo.priority"
+              :aria-selected="selectedTodoId === todo.id"
+            >
               <label>
                 <input type="checkbox" :checked="todo.status === 'done'" @change="toggleTodo(todo.id)" />
                 <span>{{ todo.title }}</span>

@@ -249,10 +249,12 @@ function updateSelectedTodo(patch: Parameters<typeof updateTodo>[1]): void {
 type ListKind = 'active' | 'completed'
 type NavDirection = 'up' | 'down' | 'home' | 'end' | 'pageup' | 'pagedown'
 
-// One row of overlap between pages keeps the eye anchored — Page Down feels
-// like a scroll instead of a teleport. Fallback of 10 covers the pre-mount
-// case (list not yet laid out) and any zero-height edge; matches VS Code's
-// step when the panel is small.
+// Roughly one screenful minus a row — Page Down feels like a scroll instead
+// of a teleport. Note the scroller (`.app-workspace-main`) also contains the
+// filter bar and Completed section, so the page size is an overestimate of
+// the todo-list's visible rectangle; `scrollIntoView('nearest')` after the
+// jump keeps things self-healing. Fallback of 10 covers the pre-mount case
+// (list not yet laid out) and any zero-height edge.
 const PAGE_SIZE_FALLBACK = 10
 
 // The <ul.todo-list> is NOT the scroll container — it has no max-height /
@@ -261,8 +263,13 @@ const PAGE_SIZE_FALLBACK = 10
 // overflow-y: auto). Walk up until we find whichever element actually clips
 // overflow; fall back to the viewport if nothing does. Without this, PageDown
 // from row 0 collapses to End for any list longer than ~2 rows.
+//
+// Starting the walk at `element` itself (not parentElement) is defensive: if a
+// future refactor gives the <ul> its own overflow (sticky heading + scrolling
+// body inside one panel), we measure the correct viewport instead of walking
+// past it.
 function findScrollParent(element: HTMLElement): HTMLElement | null {
-  let node: HTMLElement | null = element.parentElement
+  let node: HTMLElement | null = element
 
   while (node) {
     const overflowY = getComputedStyle(node).overflowY

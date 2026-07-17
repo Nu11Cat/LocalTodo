@@ -142,6 +142,7 @@ type EditableTaskPatch = Partial<{
   description: string
   projectName: string | null
   repoPath: string | null
+  gitBranch: string | null
   relatedFiles: string[]
   commands: string[]
   sensitive: boolean
@@ -541,6 +542,9 @@ export function useTodos() {
     const repoPath = hasPatchKey('repoPath', patch)
       ? sanitizeOptionalTaskString(patch.repoPath)
       : currentTodo.repoPath
+    const gitBranch = hasPatchKey('gitBranch', patch)
+      ? sanitizeOptionalTaskString(patch.gitBranch, 255)
+      : currentTodo.gitBranch
 
     // When a task is (re)bound to a project and has no commands of its own, seed
     // it with that project's saved default commands. Only fires when the binding
@@ -561,6 +565,7 @@ export function useTodos() {
       ...patch,
       projectName,
       repoPath,
+      gitBranch,
       tags: hasPatchKey('tags', patch) ? sanitizeTaskStringList(patch.tags) : currentTodo.tags,
       relatedFiles: hasPatchKey('relatedFiles', patch)
         ? sanitizeTaskStringList(patch.relatedFiles)

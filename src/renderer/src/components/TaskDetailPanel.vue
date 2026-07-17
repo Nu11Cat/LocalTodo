@@ -34,6 +34,7 @@ type TaskPatch = Partial<{
   description: string
   projectName: string | null
   repoPath: string | null
+  gitBranch: string | null
   relatedFiles: string[]
   commands: string[]
   sensitive: boolean
@@ -60,6 +61,7 @@ const emit = defineEmits<{
 
 const projectNameDraft = ref('')
 const repoPathDraft = ref('')
+const gitBranchDraft = ref('')
 const tagDraft = ref('')
 const relatedFileDraft = ref('')
 const commandDraft = ref('')
@@ -71,6 +73,7 @@ watch(
   (task) => {
     projectNameDraft.value = task?.projectName ?? ''
     repoPathDraft.value = task?.repoPath ?? ''
+    gitBranchDraft.value = task?.gitBranch ?? ''
     tagDraft.value = ''
     relatedFileDraft.value = ''
     commandDraft.value = ''
@@ -117,6 +120,18 @@ function saveRepoPath(): void {
 
   if (nextRepoPath !== (props.task.repoPath ?? '')) {
     emit('update', { repoPath: nextRepoPath || null })
+  }
+}
+
+function saveGitBranch(): void {
+  if (!props.task) {
+    return
+  }
+
+  const nextGitBranch = gitBranchDraft.value.trim()
+
+  if (nextGitBranch !== (props.task.gitBranch ?? '')) {
+    emit('update', { gitBranch: nextGitBranch || null })
   }
 }
 
@@ -427,6 +442,18 @@ function formatNoteTimestamp(value: string): string {
           >
             {{ t('detail.useRepoPath', { path: repoPathSuggestion }) }}
           </button>
+        </label>
+
+        <label>
+          <span>{{ t('detail.gitBranch') }}</span>
+          <input
+            v-model="gitBranchDraft"
+            type="text"
+            maxlength="255"
+            :placeholder="t('detail.gitBranchPlaceholder')"
+            @keydown.enter.prevent="saveGitBranch"
+            @blur="saveGitBranch"
+          />
         </label>
       </div>
 

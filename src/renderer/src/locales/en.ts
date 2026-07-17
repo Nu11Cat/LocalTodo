@@ -146,6 +146,8 @@ export const en = {
   'detail.projectPlaceholder': 'Project name',
   'detail.repoPath': 'Repository path',
   'detail.repoPathPlaceholder': 'G:/path/to/repo',
+  'detail.gitBranch': 'Git branch',
+  'detail.gitBranchPlaceholder': 'feature/my-change',
   'detail.browse': 'Browse…',
   'detail.repoPathWarning': 'Repository path should be an absolute path (e.g. G:/path/to/repo).',
   'detail.useRepoPath': 'Use {path}',

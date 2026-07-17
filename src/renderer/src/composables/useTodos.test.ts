@@ -447,6 +447,7 @@ describe('useTodos', () => {
       description: '## Context\n\nEditable task details.',
       projectName: ' LocalTodo ',
       repoPath: ' G:/Zhao/nu11cat/LocalTodo ',
+      gitBranch: ' feature/task-branch ',
       relatedFiles: [' src/renderer/src/App.vue ', 'src/renderer/src/App.vue'],
       commands: [' npm test ', 'npm test']
     })
@@ -460,6 +461,7 @@ describe('useTodos', () => {
       description: '## Context\n\nEditable task details.',
       projectName: 'LocalTodo',
       repoPath: 'G:/Zhao/nu11cat/LocalTodo',
+      gitBranch: 'feature/task-branch',
       relatedFiles: ['src/renderer/src/App.vue'],
       commands: ['npm test'],
       sensitive: false
@@ -478,11 +480,16 @@ describe('useTodos', () => {
     todos.addTodo()
     const taskId = todos.todos.value[0].id
 
-    todos.updateTodo(taskId, { projectName: 'LocalTodo', repoPath: 'G:/repo' })
-    todos.updateTodo(taskId, { projectName: null, repoPath: null })
+    todos.updateTodo(taskId, {
+      projectName: 'LocalTodo',
+      repoPath: 'G:/repo',
+      gitBranch: 'feature/clear-me'
+    })
+    todos.updateTodo(taskId, { projectName: null, repoPath: null, gitBranch: null })
 
     expect(todos.todos.value[0].projectName).toBeUndefined()
     expect(todos.todos.value[0].repoPath).toBeUndefined()
+    expect(todos.todos.value[0].gitBranch).toBeUndefined()
   })
 
   it('updates timestamps when editing tasks', async () => {

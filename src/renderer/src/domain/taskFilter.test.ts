@@ -18,6 +18,7 @@ const baseTask: Task = {
   description: 'Add keyword search to task descriptions.',
   projectName: 'LocalTodo',
   repoPath: 'G:/Zhao/nu11cat/LocalTodo',
+  gitBranch: 'feature/search-branch',
   relatedFiles: ['src/renderer/src/App.vue'],
   commands: ['npm run dev'],
   notes: [],
@@ -48,6 +49,7 @@ describe('taskFilter', () => {
     expect(matchesTaskFilter(baseTask, filter({ keyword: 'localtodo' }))).toBe(true)
     expect(matchesTaskFilter(baseTask, filter({ keyword: 'App.vue' }))).toBe(true)
     expect(matchesTaskFilter(baseTask, filter({ keyword: 'npm dev' }))).toBe(true)
+    expect(matchesTaskFilter(baseTask, filter({ keyword: 'search-branch' }))).toBe(true)
     expect(matchesTaskFilter(baseTask, filter({ keyword: 'missing search' }))).toBe(false)
   })
 

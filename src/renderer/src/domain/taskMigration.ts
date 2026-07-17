@@ -65,6 +65,7 @@ function normalizeTask(value: unknown): Task | null {
     description: typeof value.description === 'string' ? value.description : '',
     projectName: typeof value.projectName === 'string' ? value.projectName : undefined,
     repoPath: typeof value.repoPath === 'string' ? value.repoPath : undefined,
+    gitBranch: typeof value.gitBranch === 'string' ? value.gitBranch : undefined,
     relatedFiles: Array.isArray(value.relatedFiles)
       ? value.relatedFiles.filter((file) => typeof file === 'string')
       : [],

@@ -145,6 +145,8 @@ export const zh = {
   'detail.projectPlaceholder': '项目名称',
   'detail.repoPath': '仓库路径',
   'detail.repoPathPlaceholder': 'G:/path/to/repo',
+  'detail.gitBranch': 'Git 分支',
+  'detail.gitBranchPlaceholder': 'feature/my-change',
   'detail.browse': '浏览……',
   'detail.repoPathWarning': '仓库路径应为绝对路径（例如 G:/path/to/repo）。',
   'detail.useRepoPath': '使用 {path}',

@@ -25,6 +25,7 @@ describe('aiContext', () => {
       tags: ['ai', 'local-first'],
       projectName: 'LocalTodo',
       repoPath: 'G:/Zhao/nu11cat/LocalTodo',
+      gitBranch: 'feature/ai-context',
       relatedFiles: ['src/renderer/src/App.vue'],
       commands: ['npm test'],
       description: 'Generate copyable Markdown for AI assistants.'
@@ -61,6 +62,10 @@ LocalTodo
 
 G:/Zhao/nu11cat/LocalTodo
 
+## Git Branch
+
+feature/ai-context
+
 ## Related Files
 
 - src/renderer/src/App.vue
@@ -88,6 +93,7 @@ Generate copyable Markdown for AI assistants.
     expect(context).toContain('## Commands\n\nNone')
     expect(context).not.toContain('## Project')
     expect(context).not.toContain('## Repository')
+    expect(context).not.toContain('## Git Branch')
     expect(context).not.toContain('## Description')
   })
 
@@ -137,6 +143,7 @@ Generate copyable Markdown for AI assistants.
         priority: 'high',
         projectName: 'LocalTodo',
         repoPath: 'G:/Zhao/nu11cat/LocalTodo',
+        gitBranch: 'feature/review-task',
         relatedFiles: ['src/renderer/src/App.vue', 'src/renderer/src/main.ts'],
         commands: ['npm test']
       }
@@ -151,6 +158,7 @@ Generate copyable Markdown for AI assistants.
     expect(context.markdown).toContain('- Priority: high')
     expect(context.markdown).toContain('- Project: LocalTodo')
     expect(context.markdown).toContain('- Repository: G:/Zhao/nu11cat/LocalTodo')
+    expect(context.markdown).toContain('- Branch: feature/review-task')
     expect(context.markdown).toContain('- Related files: 2')
     expect(context.markdown).toContain('- Commands: 1')
   })

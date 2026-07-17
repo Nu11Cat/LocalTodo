@@ -40,6 +40,7 @@ describe('taskModel', () => {
       title: 'Bind project',
       projectName: '  LocalTodo  ',
       repoPath: '  G:/Zhao/nu11cat/LocalTodo  ',
+      gitBranch: '  feature/task-branch  ',
       relatedFiles: ['', ' src/App.vue ', 'src/App.vue', 'src/main.ts'],
       commands: [' npm test ', 'npm test', '', 'npm run typecheck']
     })
@@ -47,16 +48,18 @@ describe('taskModel', () => {
     expect(task).toMatchObject({
       projectName: 'LocalTodo',
       repoPath: 'G:/Zhao/nu11cat/LocalTodo',
+      gitBranch: 'feature/task-branch',
       relatedFiles: ['src/App.vue', 'src/main.ts'],
       commands: ['npm test', 'npm run typecheck']
     })
   })
 
   it('omits empty optional project metadata', () => {
-    const task = createTask({ title: 'No project', projectName: ' ', repoPath: '' })
+    const task = createTask({ title: 'No project', projectName: ' ', repoPath: '', gitBranch: ' ' })
 
     expect(task.projectName).toBeUndefined()
     expect(task.repoPath).toBeUndefined()
+    expect(task.gitBranch).toBeUndefined()
   })
 
   it('sanitizes notes, dropping blank content and preserving valid entries', () => {

@@ -20,6 +20,7 @@ export interface Task {
   description: string
   projectName?: string
   repoPath?: string
+  gitBranch?: string
   relatedFiles: string[]
   commands: string[]
   notes: TaskNote[]
@@ -52,6 +53,7 @@ export interface CreateTaskInput {
   description?: string
   projectName?: string
   repoPath?: string
+  gitBranch?: string
   relatedFiles?: string[]
   commands?: string[]
   notes?: TaskNote[]
@@ -64,6 +66,7 @@ export function createTask(input: CreateTaskInput): Task {
   const now = new Date().toISOString()
   const projectName = sanitizeOptionalTaskString(input.projectName)
   const repoPath = sanitizeOptionalTaskString(input.repoPath)
+  const gitBranch = sanitizeOptionalTaskString(input.gitBranch, 255)
   const task: Task = {
     id: input.id ?? createTaskId(),
     title: input.title,
@@ -86,6 +89,10 @@ export function createTask(input: CreateTaskInput): Task {
 
   if (repoPath) {
     task.repoPath = repoPath
+  }
+
+  if (gitBranch) {
+    task.gitBranch = gitBranch
   }
 
   return task

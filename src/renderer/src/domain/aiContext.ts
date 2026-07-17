@@ -80,6 +80,10 @@ function formatTaskSummary(task: Task): string {
     lines.push(`- Repository: ${task.repoPath}`)
   }
 
+  if (task.gitBranch) {
+    lines.push(`- Branch: ${task.gitBranch}`)
+  }
+
   lines.push(
     `- Related files: ${task.relatedFiles.length}`,
     `- Commands: ${task.commands.length}`,
@@ -194,6 +198,10 @@ export function generateTaskAiContext(task: Task): string {
 
   if (task.repoPath) {
     sections.push('', '## Repository', '', task.repoPath)
+  }
+
+  if (task.gitBranch) {
+    sections.push('', '## Git Branch', '', task.gitBranch)
   }
 
   sections.push(

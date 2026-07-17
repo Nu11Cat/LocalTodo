@@ -43,6 +43,7 @@ describe('taskMigration', () => {
         description: 'Details',
         projectName: ' LocalTodo ',
         repoPath: ' G:/Zhao/nu11cat/LocalTodo ',
+        gitBranch: ' feature/migrate-branch ',
         relatedFiles: [' src/App.vue ', 123, 'src/App.vue'],
         commands: [' npm test ', null, 'npm test'],
         notes: [
@@ -66,6 +67,7 @@ describe('taskMigration', () => {
         description: 'Details',
         projectName: 'LocalTodo',
         repoPath: 'G:/Zhao/nu11cat/LocalTodo',
+        gitBranch: 'feature/migrate-branch',
         relatedFiles: ['src/App.vue'],
         commands: ['npm test'],
         notes: [{ id: 'note-1', createdAt: '2026-06-16T03:00:00.000Z', content: 'Logged progress' }],

@@ -35,6 +35,8 @@ type TaskPatch = Partial<{
   projectName: string | null
   repoPath: string | null
   gitBranch: string | null
+  githubIssueUrl: string | null
+  githubPullRequestUrl: string | null
   relatedFiles: string[]
   commands: string[]
   sensitive: boolean
@@ -62,6 +64,8 @@ const emit = defineEmits<{
 const projectNameDraft = ref('')
 const repoPathDraft = ref('')
 const gitBranchDraft = ref('')
+const githubIssueUrlDraft = ref('')
+const githubPullRequestUrlDraft = ref('')
 const tagDraft = ref('')
 const relatedFileDraft = ref('')
 const commandDraft = ref('')
@@ -74,6 +78,8 @@ watch(
     projectNameDraft.value = task?.projectName ?? ''
     repoPathDraft.value = task?.repoPath ?? ''
     gitBranchDraft.value = task?.gitBranch ?? ''
+    githubIssueUrlDraft.value = task?.githubIssueUrl ?? ''
+    githubPullRequestUrlDraft.value = task?.githubPullRequestUrl ?? ''
     tagDraft.value = ''
     relatedFileDraft.value = ''
     commandDraft.value = ''
@@ -132,6 +138,30 @@ function saveGitBranch(): void {
 
   if (nextGitBranch !== (props.task.gitBranch ?? '')) {
     emit('update', { gitBranch: nextGitBranch || null })
+  }
+}
+
+function saveGithubIssueUrl(): void {
+  if (!props.task) {
+    return
+  }
+
+  const nextUrl = githubIssueUrlDraft.value.trim()
+
+  if (nextUrl !== (props.task.githubIssueUrl ?? '')) {
+    emit('update', { githubIssueUrl: nextUrl || null })
+  }
+}
+
+function saveGithubPullRequestUrl(): void {
+  if (!props.task) {
+    return
+  }
+
+  const nextUrl = githubPullRequestUrlDraft.value.trim()
+
+  if (nextUrl !== (props.task.githubPullRequestUrl ?? '')) {
+    emit('update', { githubPullRequestUrl: nextUrl || null })
   }
 }
 
@@ -453,6 +483,32 @@ function formatNoteTimestamp(value: string): string {
             :placeholder="t('detail.gitBranchPlaceholder')"
             @keydown.enter.prevent="saveGitBranch"
             @blur="saveGitBranch"
+          />
+        </label>
+      </div>
+
+      <div class="field-grid detail-field">
+        <label>
+          <span>{{ t('detail.githubIssue') }}</span>
+          <input
+            v-model="githubIssueUrlDraft"
+            type="url"
+            maxlength="2000"
+            :placeholder="t('detail.githubIssuePlaceholder')"
+            @keydown.enter.prevent="saveGithubIssueUrl"
+            @blur="saveGithubIssueUrl"
+          />
+        </label>
+
+        <label>
+          <span>{{ t('detail.githubPullRequest') }}</span>
+          <input
+            v-model="githubPullRequestUrlDraft"
+            type="url"
+            maxlength="2000"
+            :placeholder="t('detail.githubPullRequestPlaceholder')"
+            @keydown.enter.prevent="saveGithubPullRequestUrl"
+            @blur="saveGithubPullRequestUrl"
           />
         </label>
       </div>

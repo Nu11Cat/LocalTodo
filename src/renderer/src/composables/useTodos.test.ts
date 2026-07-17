@@ -448,6 +448,8 @@ describe('useTodos', () => {
       projectName: ' LocalTodo ',
       repoPath: ' G:/Zhao/nu11cat/LocalTodo ',
       gitBranch: ' feature/task-branch ',
+      githubIssueUrl: ' https://github.com/Nu11Cat/LocalTodo/issues/12 ',
+      githubPullRequestUrl: ' https://github.com/Nu11Cat/LocalTodo/pull/34 ',
       relatedFiles: [' src/renderer/src/App.vue ', 'src/renderer/src/App.vue'],
       commands: [' npm test ', 'npm test']
     })
@@ -462,6 +464,8 @@ describe('useTodos', () => {
       projectName: 'LocalTodo',
       repoPath: 'G:/Zhao/nu11cat/LocalTodo',
       gitBranch: 'feature/task-branch',
+      githubIssueUrl: 'https://github.com/Nu11Cat/LocalTodo/issues/12',
+      githubPullRequestUrl: 'https://github.com/Nu11Cat/LocalTodo/pull/34',
       relatedFiles: ['src/renderer/src/App.vue'],
       commands: ['npm test'],
       sensitive: false
@@ -483,13 +487,23 @@ describe('useTodos', () => {
     todos.updateTodo(taskId, {
       projectName: 'LocalTodo',
       repoPath: 'G:/repo',
-      gitBranch: 'feature/clear-me'
+      gitBranch: 'feature/clear-me',
+      githubIssueUrl: 'https://github.com/Nu11Cat/LocalTodo/issues/12',
+      githubPullRequestUrl: 'https://github.com/Nu11Cat/LocalTodo/pull/34'
     })
-    todos.updateTodo(taskId, { projectName: null, repoPath: null, gitBranch: null })
+    todos.updateTodo(taskId, {
+      projectName: null,
+      repoPath: null,
+      gitBranch: null,
+      githubIssueUrl: null,
+      githubPullRequestUrl: null
+    })
 
     expect(todos.todos.value[0].projectName).toBeUndefined()
     expect(todos.todos.value[0].repoPath).toBeUndefined()
     expect(todos.todos.value[0].gitBranch).toBeUndefined()
+    expect(todos.todos.value[0].githubIssueUrl).toBeUndefined()
+    expect(todos.todos.value[0].githubPullRequestUrl).toBeUndefined()
   })
 
   it('updates timestamps when editing tasks', async () => {

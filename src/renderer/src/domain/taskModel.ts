@@ -21,6 +21,8 @@ export interface Task {
   projectName?: string
   repoPath?: string
   gitBranch?: string
+  githubIssueUrl?: string
+  githubPullRequestUrl?: string
   relatedFiles: string[]
   commands: string[]
   notes: TaskNote[]
@@ -54,6 +56,8 @@ export interface CreateTaskInput {
   projectName?: string
   repoPath?: string
   gitBranch?: string
+  githubIssueUrl?: string
+  githubPullRequestUrl?: string
   relatedFiles?: string[]
   commands?: string[]
   notes?: TaskNote[]
@@ -67,6 +71,8 @@ export function createTask(input: CreateTaskInput): Task {
   const projectName = sanitizeOptionalTaskString(input.projectName)
   const repoPath = sanitizeOptionalTaskString(input.repoPath)
   const gitBranch = sanitizeOptionalTaskString(input.gitBranch, 255)
+  const githubIssueUrl = sanitizeOptionalTaskString(input.githubIssueUrl, 2000)
+  const githubPullRequestUrl = sanitizeOptionalTaskString(input.githubPullRequestUrl, 2000)
   const task: Task = {
     id: input.id ?? createTaskId(),
     title: input.title,
@@ -93,6 +99,14 @@ export function createTask(input: CreateTaskInput): Task {
 
   if (gitBranch) {
     task.gitBranch = gitBranch
+  }
+
+  if (githubIssueUrl) {
+    task.githubIssueUrl = githubIssueUrl
+  }
+
+  if (githubPullRequestUrl) {
+    task.githubPullRequestUrl = githubPullRequestUrl
   }
 
   return task

@@ -44,6 +44,8 @@ describe('taskMigration', () => {
         projectName: ' LocalTodo ',
         repoPath: ' G:/Zhao/nu11cat/LocalTodo ',
         gitBranch: ' feature/migrate-branch ',
+        githubIssueUrl: ' https://github.com/Nu11Cat/LocalTodo/issues/12 ',
+        githubPullRequestUrl: ' https://github.com/Nu11Cat/LocalTodo/pull/34 ',
         relatedFiles: [' src/App.vue ', 123, 'src/App.vue'],
         commands: [' npm test ', null, 'npm test'],
         notes: [
@@ -68,6 +70,8 @@ describe('taskMigration', () => {
         projectName: 'LocalTodo',
         repoPath: 'G:/Zhao/nu11cat/LocalTodo',
         gitBranch: 'feature/migrate-branch',
+        githubIssueUrl: 'https://github.com/Nu11Cat/LocalTodo/issues/12',
+        githubPullRequestUrl: 'https://github.com/Nu11Cat/LocalTodo/pull/34',
         relatedFiles: ['src/App.vue'],
         commands: ['npm test'],
         notes: [{ id: 'note-1', createdAt: '2026-06-16T03:00:00.000Z', content: 'Logged progress' }],

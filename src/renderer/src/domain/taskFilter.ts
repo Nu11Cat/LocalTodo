@@ -53,6 +53,8 @@ function matchesKeyword(task: Task, keyword: string): boolean {
     task.projectName ?? '',
     task.repoPath ?? '',
     task.gitBranch ?? '',
+    task.githubIssueUrl ?? '',
+    task.githubPullRequestUrl ?? '',
     ...task.tags,
     ...task.relatedFiles,
     ...task.commands

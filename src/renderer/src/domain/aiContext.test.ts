@@ -26,6 +26,8 @@ describe('aiContext', () => {
       projectName: 'LocalTodo',
       repoPath: 'G:/Zhao/nu11cat/LocalTodo',
       gitBranch: 'feature/ai-context',
+      githubIssueUrl: 'https://github.com/Nu11Cat/LocalTodo/issues/12',
+      githubPullRequestUrl: 'https://github.com/Nu11Cat/LocalTodo/pull/34',
       relatedFiles: ['src/renderer/src/App.vue'],
       commands: ['npm test'],
       description: 'Generate copyable Markdown for AI assistants.'
@@ -66,6 +68,14 @@ G:/Zhao/nu11cat/LocalTodo
 
 feature/ai-context
 
+## GitHub Issue
+
+https://github.com/Nu11Cat/LocalTodo/issues/12
+
+## GitHub Pull Request
+
+https://github.com/Nu11Cat/LocalTodo/pull/34
+
 ## Related Files
 
 - src/renderer/src/App.vue
@@ -94,6 +104,8 @@ Generate copyable Markdown for AI assistants.
     expect(context).not.toContain('## Project')
     expect(context).not.toContain('## Repository')
     expect(context).not.toContain('## Git Branch')
+    expect(context).not.toContain('## GitHub Issue')
+    expect(context).not.toContain('## GitHub Pull Request')
     expect(context).not.toContain('## Description')
   })
 
@@ -144,6 +156,8 @@ Generate copyable Markdown for AI assistants.
         projectName: 'LocalTodo',
         repoPath: 'G:/Zhao/nu11cat/LocalTodo',
         gitBranch: 'feature/review-task',
+        githubIssueUrl: 'https://github.com/Nu11Cat/LocalTodo/issues/56',
+        githubPullRequestUrl: 'https://github.com/Nu11Cat/LocalTodo/pull/78',
         relatedFiles: ['src/renderer/src/App.vue', 'src/renderer/src/main.ts'],
         commands: ['npm test']
       }
@@ -159,6 +173,12 @@ Generate copyable Markdown for AI assistants.
     expect(context.markdown).toContain('- Project: LocalTodo')
     expect(context.markdown).toContain('- Repository: G:/Zhao/nu11cat/LocalTodo')
     expect(context.markdown).toContain('- Branch: feature/review-task')
+    expect(context.markdown).toContain(
+      '- GitHub issue: https://github.com/Nu11Cat/LocalTodo/issues/56'
+    )
+    expect(context.markdown).toContain(
+      '- GitHub pull request: https://github.com/Nu11Cat/LocalTodo/pull/78'
+    )
     expect(context.markdown).toContain('- Related files: 2')
     expect(context.markdown).toContain('- Commands: 1')
   })

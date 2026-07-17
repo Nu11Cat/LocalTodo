@@ -84,6 +84,14 @@ function formatTaskSummary(task: Task): string {
     lines.push(`- Branch: ${task.gitBranch}`)
   }
 
+  if (task.githubIssueUrl) {
+    lines.push(`- GitHub issue: ${task.githubIssueUrl}`)
+  }
+
+  if (task.githubPullRequestUrl) {
+    lines.push(`- GitHub pull request: ${task.githubPullRequestUrl}`)
+  }
+
   lines.push(
     `- Related files: ${task.relatedFiles.length}`,
     `- Commands: ${task.commands.length}`,
@@ -202,6 +210,14 @@ export function generateTaskAiContext(task: Task): string {
 
   if (task.gitBranch) {
     sections.push('', '## Git Branch', '', task.gitBranch)
+  }
+
+  if (task.githubIssueUrl) {
+    sections.push('', '## GitHub Issue', '', task.githubIssueUrl)
+  }
+
+  if (task.githubPullRequestUrl) {
+    sections.push('', '## GitHub Pull Request', '', task.githubPullRequestUrl)
   }
 
   sections.push(

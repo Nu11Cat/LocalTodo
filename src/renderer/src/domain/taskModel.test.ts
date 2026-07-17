@@ -41,6 +41,8 @@ describe('taskModel', () => {
       projectName: '  LocalTodo  ',
       repoPath: '  G:/Zhao/nu11cat/LocalTodo  ',
       gitBranch: '  feature/task-branch  ',
+      githubIssueUrl: '  https://github.com/Nu11Cat/LocalTodo/issues/12  ',
+      githubPullRequestUrl: '  https://github.com/Nu11Cat/LocalTodo/pull/34  ',
       relatedFiles: ['', ' src/App.vue ', 'src/App.vue', 'src/main.ts'],
       commands: [' npm test ', 'npm test', '', 'npm run typecheck']
     })
@@ -49,17 +51,28 @@ describe('taskModel', () => {
       projectName: 'LocalTodo',
       repoPath: 'G:/Zhao/nu11cat/LocalTodo',
       gitBranch: 'feature/task-branch',
+      githubIssueUrl: 'https://github.com/Nu11Cat/LocalTodo/issues/12',
+      githubPullRequestUrl: 'https://github.com/Nu11Cat/LocalTodo/pull/34',
       relatedFiles: ['src/App.vue', 'src/main.ts'],
       commands: ['npm test', 'npm run typecheck']
     })
   })
 
   it('omits empty optional project metadata', () => {
-    const task = createTask({ title: 'No project', projectName: ' ', repoPath: '', gitBranch: ' ' })
+    const task = createTask({
+      title: 'No project',
+      projectName: ' ',
+      repoPath: '',
+      gitBranch: ' ',
+      githubIssueUrl: '',
+      githubPullRequestUrl: ' '
+    })
 
     expect(task.projectName).toBeUndefined()
     expect(task.repoPath).toBeUndefined()
     expect(task.gitBranch).toBeUndefined()
+    expect(task.githubIssueUrl).toBeUndefined()
+    expect(task.githubPullRequestUrl).toBeUndefined()
   })
 
   it('sanitizes notes, dropping blank content and preserving valid entries', () => {

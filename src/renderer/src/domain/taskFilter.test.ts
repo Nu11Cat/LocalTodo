@@ -19,6 +19,8 @@ const baseTask: Task = {
   projectName: 'LocalTodo',
   repoPath: 'G:/Zhao/nu11cat/LocalTodo',
   gitBranch: 'feature/search-branch',
+  githubIssueUrl: 'https://github.com/Nu11Cat/LocalTodo/issues/12',
+  githubPullRequestUrl: 'https://github.com/Nu11Cat/LocalTodo/pull/34',
   relatedFiles: ['src/renderer/src/App.vue'],
   commands: ['npm run dev'],
   notes: [],
@@ -50,6 +52,7 @@ describe('taskFilter', () => {
     expect(matchesTaskFilter(baseTask, filter({ keyword: 'App.vue' }))).toBe(true)
     expect(matchesTaskFilter(baseTask, filter({ keyword: 'npm dev' }))).toBe(true)
     expect(matchesTaskFilter(baseTask, filter({ keyword: 'search-branch' }))).toBe(true)
+    expect(matchesTaskFilter(baseTask, filter({ keyword: 'issues/12 pull/34' }))).toBe(true)
     expect(matchesTaskFilter(baseTask, filter({ keyword: 'missing search' }))).toBe(false)
   })
 

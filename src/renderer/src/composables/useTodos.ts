@@ -143,6 +143,8 @@ type EditableTaskPatch = Partial<{
   projectName: string | null
   repoPath: string | null
   gitBranch: string | null
+  githubIssueUrl: string | null
+  githubPullRequestUrl: string | null
   relatedFiles: string[]
   commands: string[]
   sensitive: boolean
@@ -545,6 +547,12 @@ export function useTodos() {
     const gitBranch = hasPatchKey('gitBranch', patch)
       ? sanitizeOptionalTaskString(patch.gitBranch, 255)
       : currentTodo.gitBranch
+    const githubIssueUrl = hasPatchKey('githubIssueUrl', patch)
+      ? sanitizeOptionalTaskString(patch.githubIssueUrl, 2000)
+      : currentTodo.githubIssueUrl
+    const githubPullRequestUrl = hasPatchKey('githubPullRequestUrl', patch)
+      ? sanitizeOptionalTaskString(patch.githubPullRequestUrl, 2000)
+      : currentTodo.githubPullRequestUrl
 
     // When a task is (re)bound to a project and has no commands of its own, seed
     // it with that project's saved default commands. Only fires when the binding
@@ -566,6 +574,8 @@ export function useTodos() {
       projectName,
       repoPath,
       gitBranch,
+      githubIssueUrl,
+      githubPullRequestUrl,
       tags: hasPatchKey('tags', patch) ? sanitizeTaskStringList(patch.tags) : currentTodo.tags,
       relatedFiles: hasPatchKey('relatedFiles', patch)
         ? sanitizeTaskStringList(patch.relatedFiles)

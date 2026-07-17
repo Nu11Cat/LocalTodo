@@ -1,4 +1,4 @@
-export type AppShortcutAction = 'new-task' | 'search'
+export type AppShortcutAction = 'new-task' | 'search' | 'command-palette'
 
 export interface AppShortcutEvent {
   key: string
@@ -34,6 +34,10 @@ export function resolveAppShortcut(
 
   if (key === 'f') {
     return 'search'
+  }
+
+  if (key === 'k') {
+    return 'command-palette'
   }
 
   return null

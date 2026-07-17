@@ -15,16 +15,22 @@ function keyboardEvent(overrides: Partial<AppShortcutEvent> = {}): AppShortcutEv
 }
 
 describe('resolveAppShortcut', () => {
-  it('maps Ctrl+N and Ctrl+F on non-Mac platforms', () => {
+  it('maps Ctrl+N, Ctrl+F, and Ctrl+K on non-Mac platforms', () => {
     expect(resolveAppShortcut(keyboardEvent({ key: 'n', ctrlKey: true }), false)).toBe(
       'new-task'
     )
     expect(resolveAppShortcut(keyboardEvent({ key: 'F', ctrlKey: true }), false)).toBe('search')
+    expect(resolveAppShortcut(keyboardEvent({ key: 'k', ctrlKey: true }), false)).toBe(
+      'command-palette'
+    )
   })
 
-  it('maps Command+N and Command+F on Mac platforms', () => {
+  it('maps Command+N, Command+F, and Command+K on Mac platforms', () => {
     expect(resolveAppShortcut(keyboardEvent({ key: 'N', metaKey: true }), true)).toBe('new-task')
     expect(resolveAppShortcut(keyboardEvent({ key: 'f', metaKey: true }), true)).toBe('search')
+    expect(resolveAppShortcut(keyboardEvent({ key: 'K', metaKey: true }), true)).toBe(
+      'command-palette'
+    )
   })
 
   it('does not treat the non-platform modifier as primary', () => {
@@ -41,6 +47,6 @@ describe('resolveAppShortcut', () => {
   })
 
   it('ignores unrelated primary-modifier shortcuts', () => {
-    expect(resolveAppShortcut(keyboardEvent({ key: 'k', ctrlKey: true }), false)).toBeNull()
+    expect(resolveAppShortcut(keyboardEvent({ key: 'p', ctrlKey: true }), false)).toBeNull()
   })
 })

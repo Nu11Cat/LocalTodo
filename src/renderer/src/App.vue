@@ -3,6 +3,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import TaskDetailPanel from './components/TaskDetailPanel.vue'
 import TodoRow from './components/TodoRow.vue'
 import AppTitlebar from './components/AppTitlebar.vue'
+import CommandPalette from './components/CommandPalette.vue'
 import AppSidebar from './components/AppSidebar.vue'
 import AppStatusbar from './components/AppStatusbar.vue'
 import SplitPane from './components/SplitPane.vue'
@@ -22,6 +23,7 @@ import {
   type ListboxTypeaheadState
 } from './domain/listboxNavigation'
 import { resolveAppShortcut } from './domain/appShortcut'
+import type { CommandPaletteCommandId } from './domain/commandPalette'
 
 const { t } = useLocale()
 const { applyTheme } = useTheme()
@@ -52,10 +54,13 @@ const lastExportedFilePath = ref<string | null>(null)
 const lastExportedAiContextFilePath = ref<string | null>(null)
 const titlebar = ref<InstanceType<typeof AppTitlebar> | null>(null)
 const searchInput = ref<HTMLInputElement | null>(null)
+const commandPaletteOpen = ref(false)
+let focusBeforeCommandPalette: HTMLElement | null = null
 
 const isMacPlatform = /^(Mac|iPhone|iPad|iPod)/.test(navigator.platform)
 const newTaskShortcutLabel = isMacPlatform ? '⌘N' : 'Ctrl+N'
 const searchShortcutLabel = isMacPlatform ? '⌘F' : 'Ctrl+F'
+const commandPaletteShortcutLabel = isMacPlatform ? '⌘K' : 'Ctrl+K'
 
 const {
   todos,
@@ -118,6 +123,45 @@ const {
   applyTodosJsonImport
 } = useTodos()
 
+function openCommandPalette(): void {
+  focusBeforeCommandPalette = document.activeElement as HTMLElement | null
+  commandPaletteOpen.value = true
+}
+
+async function closeCommandPalette(restoreFocus = true): Promise<void> {
+  commandPaletteOpen.value = false
+  await nextTick()
+
+  if (restoreFocus) {
+    focusBeforeCommandPalette?.focus()
+  }
+}
+
+async function focusNewTaskInput(): Promise<void> {
+  await closeCommandPalette(false)
+  titlebar.value?.focusNewTask()
+}
+
+async function focusTaskSearch(): Promise<void> {
+  await closeCommandPalette(false)
+  searchInput.value?.focus()
+  searchInput.value?.select()
+}
+
+function executeCommandPaletteCommand(commandId: CommandPaletteCommandId): void {
+  if (commandId === 'new-task') {
+    void focusNewTaskInput()
+  } else if (commandId === 'search-tasks') {
+    void focusTaskSearch()
+  } else if (commandId === 'clear-filters') {
+    resetFilters()
+    void closeCommandPalette()
+  } else {
+    toggleNavCollapsed()
+    void closeCommandPalette()
+  }
+}
+
 function onAppShortcut(event: KeyboardEvent): void {
   if (event.defaultPrevented) {
     return
@@ -132,12 +176,20 @@ function onAppShortcut(event: KeyboardEvent): void {
   event.preventDefault()
 
   if (action === 'new-task') {
-    titlebar.value?.focusNewTask()
+    void focusNewTaskInput()
     return
   }
 
-  searchInput.value?.focus()
-  searchInput.value?.select()
+  if (action === 'search') {
+    void focusTaskSearch()
+    return
+  }
+
+  if (commandPaletteOpen.value) {
+    void closeCommandPalette()
+  } else {
+    openCommandPalette()
+  }
 }
 
 onMounted(() => window.addEventListener('keydown', onAppShortcut))
@@ -989,5 +1041,17 @@ async function revealLastAiContextFile(): Promise<void> {
       @reveal-data-file="revealDataFileLocation"
       @open-data-file="openDataFileLocation"
     />
+
+    <Teleport to="body">
+      <CommandPalette
+        :open="commandPaletteOpen"
+        :can-clear-filters="hasActiveView"
+        :nav-collapsed="navCollapsed"
+        :new-task-shortcut-label="newTaskShortcutLabel"
+        :search-shortcut-label="searchShortcutLabel"
+        @close="closeCommandPalette()"
+        @execute="executeCommandPaletteCommand"
+      />
+    </Teleport>
   </div>
 </template>

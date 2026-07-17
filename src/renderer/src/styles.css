@@ -903,16 +903,16 @@ h2 {
   list-style: none;
 }
 
-/* Focus ring for the listbox itself — arrow-key navigation lands focus on the
-   <ul> (aria-activedescendant model), and a keyboard user needs a hint that
-   the list is now driving. Kept subtle so mouse users never see it. */
-.todo-list:focus {
+/* Roving tabindex puts real focus on one option per list. Keep the ring local
+   to that row so keyboard users can see the exact task that arrow/type-ahead
+   navigation is driving; mouse users never see it. */
+.todo-item:focus {
   outline: none;
 }
 
-.todo-list:focus-visible {
+.todo-item:focus-visible {
   outline: 2px solid var(--accent);
-  outline-offset: 2px;
+  outline-offset: -2px;
   /* Intentional literal — the `--radius-*` scale starts at 8px, which visually
      doubles this thin outline's corner. 4px matches the 2px stroke width so
      the ring reads as a tight rectangle around the list, not a pill. */
@@ -985,10 +985,9 @@ h2 {
 }
 
 /* Hide the per-row action cluster until hover/selection — keeps the list
-   scannable. Uses opacity + pointer-events so the buttons stay in the tab
-   order: today the Edit button is the only keyboard path to select a row,
-   so Tab MUST be able to reach a hidden row's actions. `:focus-within`
-   surfaces the cluster the moment focus lands on it. */
+   scannable. TodoRow puts only the selected row's controls in sequential Tab
+   order; non-selected controls remain mouse-clickable. `:focus-within`
+   surfaces the cluster the moment focus lands on the row or one of its actions. */
 .todo-item .todo-actions {
   opacity: 0;
   pointer-events: none;

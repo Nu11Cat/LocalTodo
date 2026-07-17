@@ -8,15 +8,15 @@
 // The row itself is the listbox option — `role="option"` with `aria-selected`
 // live on the <li>. The parent `<ul role="listbox">` is what makes the
 // `aria-selected` attribute a legitimate a11y hook rather than a hint that
-// screen readers ignore. The stable DOM id `todo-row-<id>` is targeted by the
-// listbox's `aria-activedescendant`, so keyboard nav announces without moving
-// DOM focus off the <ul>.
+// screen readers ignore. The stable DOM id `todo-row-<id>` lets App.vue move
+// focus and scroll after roving-tabindex keyboard navigation.
 import { useLocale } from '@renderer/composables/useLocale'
 import type { Task } from '@renderer/domain/taskModel'
 
 interface Props {
   todo: Task
   selected: boolean
+  tabIndex: 0 | -1
 }
 
 defineProps<Props>()
@@ -39,24 +39,42 @@ const { t } = useLocale()
     :data-priority="todo.priority"
     role="option"
     :aria-selected="selected"
+    :tabindex="tabIndex"
+    @focusin="emit('select', todo.id)"
   >
     <label>
       <input
         type="checkbox"
         :checked="todo.status === 'done'"
+        :tabindex="selected ? 0 : -1"
         @change="emit('toggle', todo.id)"
       />
       <span>{{ todo.title }}</span>
       <span v-if="todo.sensitive" class="sensitive-badge">{{ t('todo.sensitive') }}</span>
     </label>
     <div class="todo-actions">
-      <button type="button" class="ghost-button" @click="emit('select', todo.id)">
+      <button
+        type="button"
+        class="ghost-button"
+        :tabindex="selected ? 0 : -1"
+        @click="emit('select', todo.id)"
+      >
         {{ t('todo.edit') }}
       </button>
-      <button type="button" class="ghost-button" @click="emit('copy', todo.id)">
+      <button
+        type="button"
+        class="ghost-button"
+        :tabindex="selected ? 0 : -1"
+        @click="emit('copy', todo.id)"
+      >
         {{ t('todo.copyAiContext') }}
       </button>
-      <button type="button" class="ghost-button" @click="emit('remove', todo.id)">
+      <button
+        type="button"
+        class="ghost-button"
+        :tabindex="selected ? 0 : -1"
+        @click="emit('remove', todo.id)"
+      >
         {{ t('todo.remove') }}
       </button>
     </div>

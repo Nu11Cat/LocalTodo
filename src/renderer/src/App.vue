@@ -10,8 +10,17 @@ import { useTodos } from './composables/useTodos'
 import { useLocale } from './composables/useLocale'
 import { useTheme } from './composables/useTheme'
 import { useLayout, navWidthMin, navWidthMax, detailWidthMin, detailWidthMax } from './composables/useLayout'
+import { listboxPageSizeFor } from './composables/useListboxNavigation'
 import { taskPriorities, taskStatuses, taskTypes, type TaskStatus } from './domain/taskModel'
 import type { TaskSortKey } from './domain/taskSort'
+import {
+  advanceListboxTypeahead,
+  createListboxTypeaheadState,
+  findTypeaheadMatchIndex,
+  nextListboxIndex,
+  type ListboxNavigationDirection,
+  type ListboxTypeaheadState
+} from './domain/listboxNavigation'
 
 const { t } = useLocale()
 const { applyTheme } = useTheme()
@@ -247,65 +256,36 @@ function updateSelectedTodo(patch: Parameters<typeof updateTodo>[1]): void {
 // the current selection is in the other list (or nothing is selected), Down
 // picks the first row of THIS list, Up picks the last.
 type ListKind = 'active' | 'completed'
-type NavDirection = 'up' | 'down' | 'home' | 'end' | 'pageup' | 'pagedown'
 
-// Roughly one screenful minus a row — Page Down feels like a scroll instead
-// of a teleport. Note the scroller (`.app-workspace-main`) also contains the
-// filter bar and Completed section, so the page size is an overestimate of
-// the todo-list's visible rectangle; `scrollIntoView('nearest')` after the
-// jump keeps things self-healing. Fallback of 10 covers the pre-mount case
-// (list not yet laid out) and any zero-height edge.
-const PAGE_SIZE_FALLBACK = 10
-
-// The <ul.todo-list> is NOT the scroll container — it has no max-height /
-// overflow, so its clientHeight equals the natural content height (i.e. all
-// rows stacked). The scroller is an ancestor (`.app-workspace-main`,
-// overflow-y: auto). Walk up until we find whichever element actually clips
-// overflow; fall back to the viewport if nothing does. Without this, PageDown
-// from row 0 collapses to End for any list longer than ~2 rows.
-//
-// Starting the walk at `element` itself (not parentElement) is defensive: if a
-// future refactor gives the <ul> its own overflow (sticky heading + scrolling
-// body inside one panel), we measure the correct viewport instead of walking
-// past it.
-function findScrollParent(element: HTMLElement): HTMLElement | null {
-  let node: HTMLElement | null = element
-
-  while (node) {
-    const overflowY = getComputedStyle(node).overflowY
-    if (overflowY === 'auto' || overflowY === 'scroll') {
-      return node
-    }
-    node = node.parentElement
-  }
-
-  return null
+const TYPEAHEAD_TIMEOUT_MS = 700
+const typeaheadState: Record<ListKind, ListboxTypeaheadState> = {
+  active: createListboxTypeaheadState(),
+  completed: createListboxTypeaheadState()
 }
 
-function pageSizeFor(listElement: HTMLElement | null): number {
-  if (!listElement) {
-    return PAGE_SIZE_FALLBACK
-  }
+// Roving tabindex gives each list one option in the document's normal Tab
+// sequence. If the global selection belongs to the other list, its first row
+// is the local entry point; focusing it promotes it to the selected row.
+const activeListTabStopId = computed(() =>
+  activeTodos.value.some((todo) => todo.id === selectedTodoId.value)
+    ? selectedTodoId.value
+    : activeTodos.value[0]?.id
+)
+const completedListTabStopId = computed(() =>
+  completedTodos.value.some((todo) => todo.id === selectedTodoId.value)
+    ? selectedTodoId.value
+    : completedTodos.value[0]?.id
+)
 
-  // Query for `.todo-item` explicitly rather than firstElementChild — future
-  // sentinel rows (empty state, load-more, group header) inside the <ul> would
-  // silently poison a positional lookup.
-  const firstRow = listElement.querySelector<HTMLElement>('.todo-item')
-  const rowHeight = firstRow?.offsetHeight ?? 0
+function todoRowTabIndex(list: ListKind, todoId: string): 0 | -1 {
+  const tabStopId = list === 'active' ? activeListTabStopId.value : completedListTabStopId.value
 
-  if (rowHeight <= 0) {
-    return PAGE_SIZE_FALLBACK
-  }
-
-  const scroller = findScrollParent(listElement)
-  const viewport = scroller?.clientHeight ?? window.innerHeight
-
-  return Math.max(1, Math.floor(viewport / rowHeight) - 1)
+  return tabStopId === todoId ? 0 : -1
 }
 
 async function navigateTodoList(
   list: ListKind,
-  direction: NavDirection,
+  direction: ListboxNavigationDirection,
   listElement: HTMLElement | null = null
 ): Promise<void> {
   const rows = list === 'active' ? activeTodos.value : completedTodos.value
@@ -315,48 +295,68 @@ async function navigateTodoList(
   }
 
   const currentIndex = rows.findIndex((todo) => todo.id === selectedTodoId.value)
+  const pageSize = direction === 'pageup' || direction === 'pagedown'
+    ? listboxPageSizeFor(listElement)
+    : 1
+  const nextIndex = nextListboxIndex(rows.length, currentIndex, direction, pageSize)
 
-  let nextIndex: number
-
-  if (direction === 'home') {
-    nextIndex = 0
-  } else if (direction === 'end') {
-    nextIndex = rows.length - 1
-  } else if (currentIndex === -1) {
-    // Selection is in the other list or unset — enter this list at the natural end.
-    // Page keys behave like Down/Up in this cold-start case (jumping a page from
-    // "nowhere" would just be Home/End with extra steps).
-    nextIndex = direction === 'down' || direction === 'pagedown' ? 0 : rows.length - 1
-  } else if (direction === 'down') {
-    nextIndex = Math.min(currentIndex + 1, rows.length - 1)
-  } else if (direction === 'up') {
-    nextIndex = Math.max(currentIndex - 1, 0)
-  } else if (direction === 'pagedown') {
-    nextIndex = Math.min(currentIndex + pageSizeFor(listElement), rows.length - 1)
-  } else {
-    nextIndex = Math.max(currentIndex - pageSizeFor(listElement), 0)
-  }
-
-  const nextTodo = rows[nextIndex]
-
-  if (nextTodo && nextTodo.id !== selectedTodoId.value) {
-    selectTodo(nextTodo.id)
-
-    // aria-activedescendant does not move DOM focus, so the browser has no
-    // reason to scroll the newly-active option into view. Wait for the row's
-    // `.is-selected` class to render, then nudge it into the viewport — 'nearest'
-    // avoids yanking the pane when the row is already fully visible.
-    await nextTick()
-    document
-      .getElementById(`todo-row-${nextTodo.id}`)
-      ?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
-  }
+  await selectAndFocusTodo(rows, nextIndex)
 }
 
-// ArrowUp/Down/Home/End/PageUp/PageDown drive selection; call preventDefault so
-// the browser doesn't also scroll the whole grid pane. Space/Enter are already
-// handled by native <button>/<input type=checkbox> focus, so we don't intercept
-// them here.
+async function selectAndFocusTodo(
+  rows: typeof activeTodos.value,
+  nextIndex: number
+): Promise<void> {
+  const nextTodo = rows[nextIndex]
+
+  if (!nextTodo) {
+    return
+  }
+
+  if (nextTodo.id !== selectedTodoId.value) {
+    selectTodo(nextTodo.id)
+  }
+
+  // Selection changes which option owns tabindex="0". Wait for that DOM patch,
+  // then move real focus (the roving-tabindex model) and keep the row visible.
+  await nextTick()
+  const row = document.getElementById(`todo-row-${nextTodo.id}`)
+  row?.focus({ preventScroll: true })
+  row?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+}
+
+async function navigateTodoListByTypeahead(list: ListKind, key: string): Promise<void> {
+  const rows = list === 'active' ? activeTodos.value : completedTodos.value
+  const nextState = advanceListboxTypeahead(
+    typeaheadState[list],
+    key,
+    Date.now(),
+    TYPEAHEAD_TIMEOUT_MS
+  )
+  typeaheadState[list] = nextState
+
+  const currentIndex = rows.findIndex((todo) => todo.id === selectedTodoId.value)
+  const nextIndex = findTypeaheadMatchIndex(
+    rows.map((todo) => todo.title),
+    currentIndex,
+    nextState.query
+  )
+
+  await selectAndFocusTodo(rows, nextIndex)
+}
+
+function resetTodoListTypeahead(list: ListKind): void {
+  typeaheadState[list] = createListboxTypeaheadState()
+}
+
+function isTypeaheadKey(event: KeyboardEvent): boolean {
+  return !event.isComposing && event.key !== ' ' && Array.from(event.key).length === 1
+}
+
+// ArrowUp/Down/Home/End/PageUp/PageDown drive selection, while printable keys
+// jump to the next title with that prefix. Events from a row's checkbox/action
+// buttons are left to those native controls; this handler owns only the focused
+// `role="option"` itself.
 //
 // Bail out on any modifier — Ctrl+Home means "top of document", Cmd+Arrow on
 // macOS jumps to line ends, Alt+Arrow is reserved by browsers/OS, and
@@ -364,6 +364,12 @@ async function navigateTodoList(
 // muscle memory the user brought in from every other app.
 function onTodoListKeydown(list: ListKind, event: KeyboardEvent): void {
   if (event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) {
+    return
+  }
+
+  const eventTarget = event.target as HTMLElement | null
+
+  if (eventTarget?.getAttribute('role') !== 'option') {
     return
   }
 
@@ -377,46 +383,46 @@ function onTodoListKeydown(list: ListKind, event: KeyboardEvent): void {
   switch (event.key) {
     case 'ArrowDown':
       event.preventDefault()
+      resetTodoListTypeahead(list)
       void navigateTodoList(list, 'down', listElement)
       break
     case 'ArrowUp':
       event.preventDefault()
+      resetTodoListTypeahead(list)
       void navigateTodoList(list, 'up', listElement)
       break
     case 'Home':
       event.preventDefault()
+      resetTodoListTypeahead(list)
       void navigateTodoList(list, 'home', listElement)
       break
     case 'End':
       event.preventDefault()
+      resetTodoListTypeahead(list)
       void navigateTodoList(list, 'end', listElement)
       break
     case 'PageDown':
       event.preventDefault()
+      resetTodoListTypeahead(list)
       void navigateTodoList(list, 'pagedown', listElement)
       break
     case 'PageUp':
       event.preventDefault()
+      resetTodoListTypeahead(list)
       void navigateTodoList(list, 'pageup', listElement)
       break
+    case ' ':
+      // Selection follows focus, so Space has no state left to change. Suppress
+      // its page-scroll default to match the single-select listbox contract.
+      event.preventDefault()
+      break
     default:
+      if (isTypeaheadKey(event)) {
+        event.preventDefault()
+        void navigateTodoListByTypeahead(list, event.key)
+      }
       break
   }
-}
-
-// aria-activedescendant needs the id only when the selection is actually inside
-// THIS list — otherwise SR would announce a row that isn't visually highlighted
-// in the focused listbox. Returns undefined so Vue skips the attribute.
-function activeDescendantFor(list: ListKind): string | undefined {
-  const rows = list === 'active' ? activeTodos.value : completedTodos.value
-
-  if (!selectedTodoId.value) {
-    return undefined
-  }
-
-  const hit = rows.find((todo) => todo.id === selectedTodoId.value)
-
-  return hit ? `todo-row-${hit.id}` : undefined
 }
 
 function changeSortKey(key: TaskSortKey): void {
@@ -859,9 +865,7 @@ async function revealLastAiContextFile(): Promise<void> {
             v-else
             class="todo-list"
             role="listbox"
-            tabindex="0"
             :aria-label="t('panel.active')"
-            :aria-activedescendant="activeDescendantFor('active')"
             @keydown="onTodoListKeydown('active', $event)"
           >
             <TodoRow
@@ -869,6 +873,7 @@ async function revealLastAiContextFile(): Promise<void> {
               :key="todo.id"
               :todo="todo"
               :selected="selectedTodoId === todo.id"
+              :tab-index="todoRowTabIndex('active', todo.id)"
               @toggle="toggleTodo"
               @select="selectTodo"
               @copy="copyTodoContext"
@@ -898,9 +903,7 @@ async function revealLastAiContextFile(): Promise<void> {
             v-else
             class="todo-list completed-list"
             role="listbox"
-            tabindex="0"
             :aria-label="t('panel.completed')"
-            :aria-activedescendant="activeDescendantFor('completed')"
             @keydown="onTodoListKeydown('completed', $event)"
           >
             <TodoRow
@@ -908,6 +911,7 @@ async function revealLastAiContextFile(): Promise<void> {
               :key="todo.id"
               :todo="todo"
               :selected="selectedTodoId === todo.id"
+              :tab-index="todoRowTabIndex('completed', todo.id)"
               @toggle="toggleTodo"
               @select="selectTodo"
               @copy="copyTodoContext"

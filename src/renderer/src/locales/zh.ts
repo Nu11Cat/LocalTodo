@@ -28,6 +28,7 @@ export const zh = {
 
   // New-todo form
   'form.newTodo': '新建任务',
+  'form.newTodoShortcut': '新建任务（{shortcut}）',
   'form.titlePlaceholder': '需要做什么？',
   'form.taskTemplate': '任务模板',
   'form.deleteTemplate': '删除模板',
@@ -67,6 +68,7 @@ export const zh = {
   'filter.title': '查找任务',
   'filter.clear': '清除筛选',
   'filter.search': '搜索任务',
+  'filter.searchShortcut': '搜索任务（{shortcut}）',
   'filter.searchPlaceholder': '搜索标题、描述或标签',
   'filter.quickViews': '快捷视图',
   'filter.savedViews': '已存视图',

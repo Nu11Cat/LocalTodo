@@ -28,6 +28,7 @@ export const en = {
 
   // New-todo form
   'form.newTodo': 'New todo',
+  'form.newTodoShortcut': 'New task ({shortcut})',
   'form.titlePlaceholder': 'What needs to be done?',
   'form.taskTemplate': 'Task template',
   'form.deleteTemplate': 'Delete template',
@@ -67,6 +68,7 @@ export const en = {
   'filter.title': 'Find tasks',
   'filter.clear': 'Clear filters',
   'filter.search': 'Search tasks',
+  'filter.searchShortcut': 'Search tasks ({shortcut})',
   'filter.searchPlaceholder': 'Search title, description, or tags',
   'filter.quickViews': 'Quick views',
   'filter.savedViews': 'Saved views',

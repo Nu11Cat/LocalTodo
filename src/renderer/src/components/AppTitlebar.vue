@@ -17,6 +17,7 @@ interface TemplateOption {
 
 interface Props {
   draftTitle: string
+  newTaskShortcutLabel: string
   selectedTemplateId: string
   availableTemplates: TemplateOption[]
   isCustomTemplateSelected: boolean
@@ -44,6 +45,19 @@ const { theme, setTheme } = useTheme()
 // programmatically clicking it when the user picks "Import JSON"; the picked
 // file is then handed to the parent via the `import-file` event.
 const fileInput = ref<HTMLInputElement | null>(null)
+const titleInput = ref<HTMLInputElement | null>(null)
+
+function focusNewTask(): boolean {
+  if (!titleInput.value || titleInput.value.disabled) {
+    return false
+  }
+
+  titleInput.value.focus()
+  titleInput.value.select()
+  return true
+}
+
+defineExpose({ focusNewTask })
 
 function openImportDialog(): void {
   fileInput.value?.click()
@@ -68,12 +82,15 @@ function templateLabel(template: TemplateOption): string {
     <form class="app-titlebar-form" @submit.prevent="emit('add-todo')">
       <label class="sr-only" for="titlebar-todo-title">{{ t('form.newTodo') }}</label>
       <input
+        ref="titleInput"
         id="titlebar-todo-title"
         class="app-titlebar-input"
         type="text"
         autocomplete="off"
         :value="draftTitle"
         :placeholder="t('form.titlePlaceholder')"
+        :title="t('form.newTodoShortcut', { shortcut: newTaskShortcutLabel })"
+        aria-keyshortcuts="Control+N Meta+N"
         :disabled="!isLoaded"
         @input="emit('update:draftTitle', ($event.target as HTMLInputElement).value)"
       />

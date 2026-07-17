@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import TaskDetailPanel from './components/TaskDetailPanel.vue'
 import TodoRow from './components/TodoRow.vue'
 import AppTitlebar from './components/AppTitlebar.vue'
@@ -21,6 +21,7 @@ import {
   type ListboxNavigationDirection,
   type ListboxTypeaheadState
 } from './domain/listboxNavigation'
+import { resolveAppShortcut } from './domain/appShortcut'
 
 const { t } = useLocale()
 const { applyTheme } = useTheme()
@@ -49,6 +50,12 @@ const projectContextExportMessage = ref('')
 const savedViewName = ref('')
 const lastExportedFilePath = ref<string | null>(null)
 const lastExportedAiContextFilePath = ref<string | null>(null)
+const titlebar = ref<InstanceType<typeof AppTitlebar> | null>(null)
+const searchInput = ref<HTMLInputElement | null>(null)
+
+const isMacPlatform = /^(Mac|iPhone|iPad|iPod)/.test(navigator.platform)
+const newTaskShortcutLabel = isMacPlatform ? '⌘N' : 'Ctrl+N'
+const searchShortcutLabel = isMacPlatform ? '⌘F' : 'Ctrl+F'
 
 const {
   todos,
@@ -110,6 +117,31 @@ const {
   previewTodosJsonImport,
   applyTodosJsonImport
 } = useTodos()
+
+function onAppShortcut(event: KeyboardEvent): void {
+  if (event.defaultPrevented) {
+    return
+  }
+
+  const action = resolveAppShortcut(event, isMacPlatform)
+
+  if (!action) {
+    return
+  }
+
+  event.preventDefault()
+
+  if (action === 'new-task') {
+    titlebar.value?.focusNewTask()
+    return
+  }
+
+  searchInput.value?.focus()
+  searchInput.value?.select()
+}
+
+onMounted(() => window.addEventListener('keydown', onAppShortcut))
+onBeforeUnmount(() => window.removeEventListener('keydown', onAppShortcut))
 
 const todosSensitiveCount = computed(() => todos.value.filter((todo) => todo.sensitive).length)
 
@@ -651,7 +683,9 @@ async function revealLastAiContextFile(): Promise<void> {
 <template>
   <div class="app-workspace" :class="{ 'is-nav-collapsed': navCollapsed }" :style="workspaceStyle">
     <AppTitlebar
+      ref="titlebar"
       :draft-title="draftTitle"
+      :new-task-shortcut-label="newTaskShortcutLabel"
       :selected-template-id="selectedTemplateId"
       :available-templates="availableTemplates"
       :is-custom-template-selected="isCustomTemplateSelected"
@@ -721,11 +755,14 @@ async function revealLastAiContextFile(): Promise<void> {
 
           <label class="sr-only" for="task-search">{{ t('filter.search') }}</label>
           <input
+            ref="searchInput"
             id="task-search"
             class="filter-search"
             type="search"
             :value="filterState.keyword"
             :placeholder="t('filter.searchPlaceholder')"
+            :title="t('filter.searchShortcut', { shortcut: searchShortcutLabel })"
+            aria-keyshortcuts="Control+F Meta+F"
             @input="setFilterKeyword(($event.target as HTMLInputElement).value)"
           />
 

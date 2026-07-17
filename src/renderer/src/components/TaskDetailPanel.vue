@@ -10,6 +10,7 @@ import {
   type TaskType
 } from '@renderer/domain/taskModel'
 import { isAbsoluteRepoPath } from '@renderer/domain/repoPath'
+import { isGitHubIssueUrl, isGitHubPullRequestUrl } from '@renderer/domain/githubLink'
 import { useLocale } from '@renderer/composables/useLocale'
 
 const { t } = useLocale()
@@ -173,6 +174,30 @@ const showRepoPathWarning = computed(() => {
   const value = repoPathDraft.value.trim()
 
   return value.length > 0 && !isAbsoluteRepoPath(value)
+})
+
+const showGithubIssueWarning = computed(() => {
+  const value = githubIssueUrlDraft.value.trim()
+
+  return value.length > 0 && !isGitHubIssueUrl(value)
+})
+
+const showGithubPullRequestWarning = computed(() => {
+  const value = githubPullRequestUrlDraft.value.trim()
+
+  return value.length > 0 && !isGitHubPullRequestUrl(value)
+})
+
+const githubIssueOpenUrl = computed(() => {
+  const value = props.task?.githubIssueUrl ?? ''
+
+  return isGitHubIssueUrl(value) ? value : null
+})
+
+const githubPullRequestOpenUrl = computed(() => {
+  const value = props.task?.githubPullRequestUrl ?? ''
+
+  return isGitHubPullRequestUrl(value) ? value : null
 })
 
 const repoPathSuggestion = computed<string | null>(() => {
@@ -488,9 +513,10 @@ function formatNoteTimestamp(value: string): string {
       </div>
 
       <div class="field-grid detail-field">
-        <label>
-          <span>{{ t('detail.githubIssue') }}</span>
+        <div class="github-link-field">
+          <label for="task-github-issue">{{ t('detail.githubIssue') }}</label>
           <input
+            id="task-github-issue"
             v-model="githubIssueUrlDraft"
             type="url"
             maxlength="2000"
@@ -498,11 +524,24 @@ function formatNoteTimestamp(value: string): string {
             @keydown.enter.prevent="saveGithubIssueUrl"
             @blur="saveGithubIssueUrl"
           />
-        </label>
+          <small v-if="showGithubIssueWarning" class="repo-path-warning">
+            {{ t('detail.githubIssueWarning') }}
+          </small>
+          <a
+            v-if="githubIssueOpenUrl"
+            class="ghost-button external-link-button"
+            :href="githubIssueOpenUrl"
+            target="_blank"
+            rel="noreferrer"
+          >
+            {{ t('detail.openGithubIssue') }}
+          </a>
+        </div>
 
-        <label>
-          <span>{{ t('detail.githubPullRequest') }}</span>
+        <div class="github-link-field">
+          <label for="task-github-pull-request">{{ t('detail.githubPullRequest') }}</label>
           <input
+            id="task-github-pull-request"
             v-model="githubPullRequestUrlDraft"
             type="url"
             maxlength="2000"
@@ -510,7 +549,19 @@ function formatNoteTimestamp(value: string): string {
             @keydown.enter.prevent="saveGithubPullRequestUrl"
             @blur="saveGithubPullRequestUrl"
           />
-        </label>
+          <small v-if="showGithubPullRequestWarning" class="repo-path-warning">
+            {{ t('detail.githubPullRequestWarning') }}
+          </small>
+          <a
+            v-if="githubPullRequestOpenUrl"
+            class="ghost-button external-link-button"
+            :href="githubPullRequestOpenUrl"
+            target="_blank"
+            rel="noreferrer"
+          >
+            {{ t('detail.openGithubPullRequest') }}
+          </a>
+        </div>
       </div>
 
       <div class="detail-field">

@@ -1049,6 +1049,25 @@ h2 {
   flex: 1;
 }
 
+.github-link-field {
+  display: grid;
+  flex: 1;
+  gap: 8px;
+}
+
+.github-link-field label {
+  color: var(--text-label);
+  font-size: var(--fs-label);
+  font-weight: 700;
+}
+
+.external-link-button {
+  justify-self: start;
+  padding: 7px 10px;
+  text-decoration: none;
+  font-size: var(--fs-sm);
+}
+
 .field-grid span,
 .detail-field label {
   color: var(--text-label);

@@ -108,6 +108,7 @@ export const zh = {
 
   // Quick view labels
   'quickView.recent': '最近更新',
+  'quickView.overdue': '已逾期',
   'quickView.blocked': '受阻',
   'quickView.unassigned': '无项目',
 
@@ -126,6 +127,9 @@ export const zh = {
 
   // Todo item
   'todo.sensitive': '敏感',
+  'todo.dueDate': '截止 {date}',
+  'todo.dueToday': '今天截止',
+  'todo.overdue': '已逾期 · {date}',
   'todo.edit': '编辑',
   'todo.copyAiContext': '复制 AI 上下文',
   'todo.remove': '删除',
@@ -139,6 +143,7 @@ export const zh = {
   'detail.status': '状态',
   'detail.priority': '优先级',
   'detail.type': '类型',
+  'detail.dueAt': '截止日期',
   'detail.customizeWorkflow': '自定义状态或类型',
   'detail.customStatus': '自定义状态',
   'detail.customStatusPlaceholder': '例如：测试中、已发布',

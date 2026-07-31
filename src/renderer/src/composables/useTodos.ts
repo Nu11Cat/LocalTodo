@@ -34,6 +34,7 @@ import {
   isTaskActive,
   isTaskDone,
   sanitizeOptionalTaskString,
+  sanitizeTaskDueDate,
   sanitizeTaskStringList,
   toggleTaskDone,
   type Task,
@@ -150,11 +151,12 @@ type EditableTaskPatch = Partial<{
   relatedFiles: string[]
   commands: string[]
   sensitive: boolean
+  dueAt: string | null
 }>
 
 type TaskFilterKey = 'statuses' | 'priorities' | 'types' | 'tags'
 
-export type QuickViewId = 'recent' | 'blocked' | 'unassigned'
+export type QuickViewId = 'recent' | 'overdue' | 'blocked' | 'unassigned'
 
 export interface QuickView {
   id: QuickViewId
@@ -163,6 +165,7 @@ export interface QuickView {
 
 const quickViews: QuickView[] = [
   { id: 'recent', label: 'Recently updated' },
+  { id: 'overdue', label: 'Overdue' },
   { id: 'blocked', label: 'Blocked' },
   { id: 'unassigned', label: 'No project' }
 ]
@@ -557,6 +560,9 @@ export function useTodos() {
     const githubPullRequestUrl = hasPatchKey('githubPullRequestUrl', patch)
       ? sanitizeOptionalTaskString(patch.githubPullRequestUrl, 2000)
       : currentTodo.githubPullRequestUrl
+    const dueAt = hasPatchKey('dueAt', patch)
+      ? sanitizeTaskDueDate(patch.dueAt)
+      : currentTodo.dueAt
 
     // When a task is (re)bound to a project and has no commands of its own, seed
     // it with that project's saved default commands. Only fires when the binding
@@ -580,6 +586,7 @@ export function useTodos() {
       gitBranch,
       githubIssueUrl,
       githubPullRequestUrl,
+      dueAt,
       tags: hasPatchKey('tags', patch) ? sanitizeTaskStringList(patch.tags) : currentTodo.tags,
       relatedFiles: hasPatchKey('relatedFiles', patch)
         ? sanitizeTaskStringList(patch.relatedFiles)
@@ -738,6 +745,14 @@ export function useTodos() {
       filterState.value = {
         ...createEmptyTaskFilterState(),
         statuses: ['blocked']
+      }
+      return
+    }
+
+    if (id === 'overdue') {
+      filterState.value = {
+        ...createEmptyTaskFilterState(),
+        due: 'overdue'
       }
       return
     }

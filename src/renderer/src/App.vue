@@ -768,6 +768,7 @@ async function revealLastAiContextFile(): Promise<void> {
       :selected-project-key="selectedProjectKey"
       :active-statuses="filterState.statuses"
       :statuses="availableStatuses"
+      :has-active-filters="hasActiveFilters"
       :status-counts="statusCounts"
       @toggle-collapsed="toggleNavCollapsed"
       @apply-quick-view="applyQuickView"

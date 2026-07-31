@@ -159,6 +159,16 @@ describe('parseSavedViews', () => {
     expect(parsed[0].filter.types).toEqual(['custom:Ops'])
   })
 
+  it('preserves an overdue filter and defaults malformed due filters', () => {
+    const parsed = parseSavedViews([
+      { id: 'a', name: 'Late', filter: { due: 'overdue' } },
+      { id: 'b', name: 'Bad', filter: { due: 'tomorrow' } }
+    ])
+
+    expect(parsed[0].filter.due).toBe('overdue')
+    expect(parsed[1].filter.due).toBeNull()
+  })
+
   it('synthesizes an id when one is missing', () => {
     const parsed = parseSavedViews([{ name: 'Alpha' }])
 

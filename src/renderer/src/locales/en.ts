@@ -108,6 +108,7 @@ export const en = {
 
   // Quick view labels
   'quickView.recent': 'Recently updated',
+  'quickView.overdue': 'Overdue',
   'quickView.blocked': 'Blocked',
   'quickView.unassigned': 'No project',
 
@@ -126,6 +127,9 @@ export const en = {
 
   // Todo item
   'todo.sensitive': 'Sensitive',
+  'todo.dueDate': 'Due {date}',
+  'todo.dueToday': 'Due today',
+  'todo.overdue': 'Overdue · {date}',
   'todo.edit': 'Edit',
   'todo.copyAiContext': 'Copy AI Context',
   'todo.remove': 'Remove',
@@ -140,6 +144,7 @@ export const en = {
   'detail.status': 'Status',
   'detail.priority': 'Priority',
   'detail.type': 'Type',
+  'detail.dueAt': 'Due date',
   'detail.customizeWorkflow': 'Custom status or type',
   'detail.customStatus': 'Custom status',
   'detail.customStatusPlaceholder': 'e.g. QA or Released',

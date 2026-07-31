@@ -42,6 +42,7 @@
   --danger-text: #9f1239;
   --danger-soft: #ffe4e6;
   --warning-text: #b45309;
+  --warning-soft: #fef3c7;
   --fill-muted: #e2e8f0;
   --fill-muted-2: #cbd5e1;
 
@@ -152,6 +153,7 @@
   --danger-text: #fda4af;
   --danger-soft: rgba(239, 68, 68, 0.18);
   --warning-text: #fbbf24;
+  --warning-soft: rgba(245, 158, 11, 0.18);
   --fill-muted: #2b3645;
   --fill-muted-2: #3a475a;
 
@@ -972,6 +974,7 @@ h2 {
 
 .todo-item label {
   min-width: 0;
+  flex-wrap: wrap;
   gap: 10px;
 }
 
@@ -1193,11 +1196,14 @@ h2 {
 
 .tag-chip,
 .filter-chip,
-.sensitive-badge {
+.sensitive-badge,
+.due-badge {
+  flex: 0 0 auto;
   border: 0;
   border-radius: var(--radius-pill);
   padding: 6px 10px;
   font-weight: 700;
+  white-space: nowrap;
 }
 
 .tag-chip {
@@ -1210,6 +1216,23 @@ h2 {
   background: var(--danger-soft);
   font-size: var(--fs-xs);
   text-decoration: none;
+}
+
+.due-badge {
+  color: var(--text-subtle);
+  background: var(--fill-muted);
+  font-size: var(--fs-xs);
+  text-decoration: none;
+}
+
+.due-badge.is-today {
+  color: var(--warning-text);
+  background: var(--warning-soft);
+}
+
+.due-badge.is-overdue {
+  color: var(--danger-text);
+  background: var(--danger-soft);
 }
 
 .filter-chip {

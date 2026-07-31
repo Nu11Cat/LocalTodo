@@ -100,6 +100,10 @@ function formatTaskSummary(task: Task): string {
     lines.push(`- GitHub pull request: ${task.githubPullRequestUrl}`)
   }
 
+  if (task.dueAt) {
+    lines.push(`- Due: ${task.dueAt}`)
+  }
+
   lines.push(
     `- Related files: ${task.relatedFiles.length}`,
     `- Commands: ${task.commands.length}`,
@@ -234,6 +238,10 @@ export function generateTaskAiContext(task: Task): string {
 
   if (task.githubPullRequestUrl) {
     sections.push('', '## GitHub Pull Request', '', task.githubPullRequestUrl)
+  }
+
+  if (task.dueAt) {
+    sections.push('', '## Due Date', '', task.dueAt)
   }
 
   sections.push(

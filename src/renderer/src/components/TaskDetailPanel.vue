@@ -47,6 +47,7 @@ type TaskPatch = Partial<{
   relatedFiles: string[]
   commands: string[]
   sensitive: boolean
+  dueAt: string | null
 }>
 
 const props = withDefaults(
@@ -120,6 +121,11 @@ function updateType(event: Event): void {
 
 function updateSensitive(event: Event): void {
   emit('update', { sensitive: (event.target as HTMLInputElement).checked })
+}
+
+function updateDueAt(event: Event): void {
+  const value = (event.target as HTMLInputElement).value
+  emit('update', { dueAt: value || null })
 }
 
 function applyCustomStatus(): void {
@@ -479,6 +485,11 @@ function formatNoteTimestamp(value: string): string {
           <select :value="task.type" @change="updateType">
             <option v-for="taskType in availableTypes" :key="taskType" :value="taskType">{{ typeLabel(taskType) }}</option>
           </select>
+        </label>
+
+        <label>
+          <span>{{ t('detail.dueAt') }}</span>
+          <input type="date" :value="task.dueAt ?? ''" @change="updateDueAt" />
         </label>
       </div>
 

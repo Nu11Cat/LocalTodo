@@ -17,6 +17,7 @@ function cloneFilterState(filter: TaskFilterState): TaskFilterState {
     types: [...filter.types],
     tags: [...filter.tags],
     tagMatchMode: filter.tagMatchMode,
+    due: filter.due,
     projects: [...filter.projects]
   }
 }
@@ -60,6 +61,10 @@ function isTagMatchMode(value: unknown): value is TaskFilterState['tagMatchMode'
   return value === 'all' || value === 'any'
 }
 
+function isTaskDueFilter(value: unknown): value is NonNullable<TaskFilterState['due']> {
+  return value === 'overdue'
+}
+
 function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((item) => typeof item === 'string')
 }
@@ -93,6 +98,7 @@ function parseFilterState(raw: unknown): TaskFilterState {
     types: filterValidEnumValues(record.types, isTaskType),
     tags: isStringArray(record.tags) ? record.tags : fallback.tags,
     tagMatchMode: isTagMatchMode(record.tagMatchMode) ? record.tagMatchMode : fallback.tagMatchMode,
+    due: isTaskDueFilter(record.due) ? record.due : fallback.due,
     projects: isStringArray(record.projects) ? record.projects : fallback.projects
   }
 }

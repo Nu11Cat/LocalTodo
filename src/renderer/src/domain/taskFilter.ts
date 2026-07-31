@@ -1,7 +1,8 @@
 import { getProjectKey } from './projectSummary'
-import type { Task, TaskPriority, TaskStatus, TaskType } from './taskModel'
+import { getTaskDueState, type Task, type TaskPriority, type TaskStatus, type TaskType } from './taskModel'
 
 export type TagMatchMode = 'all' | 'any'
+export type TaskDueFilter = 'overdue'
 
 export interface TaskFilterState {
   keyword: string
@@ -10,6 +11,7 @@ export interface TaskFilterState {
   types: TaskType[]
   tags: string[]
   tagMatchMode: TagMatchMode
+  due: TaskDueFilter | null
   projects: string[]
 }
 
@@ -21,6 +23,7 @@ export function createEmptyTaskFilterState(): TaskFilterState {
     types: [],
     tags: [],
     tagMatchMode: 'all',
+    due: null,
     projects: []
   }
 }
@@ -32,6 +35,7 @@ export function isTaskFilterStateEmpty(state: TaskFilterState): boolean {
     state.priorities.length === 0 &&
     state.types.length === 0 &&
     state.tags.length === 0 &&
+    state.due === null &&
     state.projects.length === 0
   )
 }
@@ -55,6 +59,7 @@ function matchesKeyword(task: Task, keyword: string): boolean {
     task.gitBranch ?? '',
     task.githubIssueUrl ?? '',
     task.githubPullRequestUrl ?? '',
+    task.dueAt ?? '',
     ...task.tags,
     ...task.relatedFiles,
     ...task.commands
@@ -86,6 +91,7 @@ export function matchesTaskFilter(task: Task, state: TaskFilterState): boolean {
     (state.priorities.length === 0 || state.priorities.includes(task.priority)) &&
     (state.types.length === 0 || state.types.includes(task.type)) &&
     matchesSelectedTags(task, state.tags, state.tagMatchMode) &&
+    (state.due === null || getTaskDueState(task) === state.due) &&
     (state.projects.length === 0 || state.projects.includes(getProjectKey(task)))
   )
 }

@@ -314,4 +314,11 @@ Generate copyable Markdown for AI assistants.
     expect(context.markdown).not.toContain('custom-done:')
     expect(context.markdown).not.toContain('custom:Ops')
   })
+
+  it('includes a due date in task and project context', () => {
+    const task = { ...baseTask, dueAt: '2026-08-15' }
+
+    expect(generateTaskAiContext(task)).toContain('## Due Date\n\n2026-08-15')
+    expect(generateProjectAiContext([task]).markdown).toContain('- Due: 2026-08-15')
+  })
 })

@@ -130,4 +130,26 @@ describe('taskMigration', () => {
       type: 'custom:Ops'
     })
   })
+
+  it('preserves valid due dates and drops invalid calendar dates', () => {
+    const tasks = migrateStoredTasks([
+      {
+        id: 'due-1',
+        title: 'Valid deadline',
+        status: 'todo',
+        dueAt: '2026-08-15',
+        createdAt: '2026-07-31T01:00:00.000Z'
+      },
+      {
+        id: 'due-2',
+        title: 'Invalid deadline',
+        status: 'todo',
+        dueAt: '2026-02-30',
+        createdAt: '2026-07-31T01:00:00.000Z'
+      }
+    ])
+
+    expect(tasks[0].dueAt).toBe('2026-08-15')
+    expect(tasks[1].dueAt).toBeUndefined()
+  })
 })

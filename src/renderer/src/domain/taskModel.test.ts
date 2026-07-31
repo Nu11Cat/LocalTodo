@@ -6,12 +6,14 @@ import {
   createCustomTaskType,
   createTask,
   createTaskNote,
+  getTaskDueState,
   isTaskActive,
   isTaskDone,
   isTaskStatus,
   isTaskType,
   parseCustomTaskStatus,
   parseCustomTaskType,
+  sanitizeTaskDueDate,
   sanitizeTaskNotes,
   toggleTaskDone
 } from './taskModel'
@@ -205,5 +207,28 @@ describe('taskModel', () => {
       'review',
       'custom:Ops'
     ])
+  })
+
+  it('validates calendar due dates and classifies active deadlines', () => {
+    expect(sanitizeTaskDueDate('2026-02-28')).toBe('2026-02-28')
+    expect(sanitizeTaskDueDate('2026-02-29')).toBeUndefined()
+    expect(sanitizeTaskDueDate('2026-2-03')).toBeUndefined()
+
+    expect(getTaskDueState(createTask({ title: 'Late', dueAt: '2026-07-30' }), '2026-07-31')).toBe(
+      'overdue'
+    )
+    expect(getTaskDueState(createTask({ title: 'Today', dueAt: '2026-07-31' }), '2026-07-31')).toBe(
+      'today'
+    )
+    expect(getTaskDueState(createTask({ title: 'Next', dueAt: '2026-08-01' }), '2026-07-31')).toBe(
+      'upcoming'
+    )
+    expect(
+      getTaskDueState(createTask({ title: 'Done', status: 'done', dueAt: '2026-07-01' }), '2026-07-31')
+    ).toBe('completed')
+  })
+
+  it('drops invalid due dates when creating a task', () => {
+    expect(createTask({ title: 'Invalid', dueAt: '2026-13-01' }).dueAt).toBeUndefined()
   })
 })

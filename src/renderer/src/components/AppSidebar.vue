@@ -18,7 +18,7 @@ import {
 
 // Kept in sync with `QuickViewId` in useTodos.ts. Enumerated here so the glyph
 // map below is a total mapping — a new quick-view id would fail typecheck.
-type QuickViewId = 'recent' | 'blocked' | 'unassigned'
+type QuickViewId = 'recent' | 'overdue' | 'blocked' | 'unassigned'
 
 interface QuickView {
   id: QuickViewId
@@ -38,6 +38,7 @@ interface Props {
   selectedProjectKey: string | null
   activeStatuses: readonly TaskStatus[]
   statuses: readonly TaskStatus[]
+  hasActiveFilters: boolean
   // Total task count per status across the whole workspace. Derived in App.vue
   // so the sidebar renders a real number next to each status entry.
   statusCounts: Partial<Record<TaskStatus, number>>
@@ -70,6 +71,7 @@ const statusInitials: Record<BuiltinTaskStatus, string> = {
 
 const quickViewGlyphs: Record<QuickViewId, string> = {
   recent: '↻',
+  overdue: '!',
   blocked: '⚑',
   unassigned: '∅'
 }
@@ -107,9 +109,7 @@ function projectInitial(summary: ProjectSummary): string {
 // Status entries mirror the middle filter-bar's multi-select semantics via
 // `includes` so the two rails stay in sync (see App.vue's toggleStatusFilter).
 const isAllTasksActive = computed(
-  () =>
-    props.activeStatuses.length === 0 &&
-    props.selectedProjectKey === null
+  () => !props.hasActiveFilters
 )
 
 function isStatusActive(status: TaskStatus): boolean {

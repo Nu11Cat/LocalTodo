@@ -10,8 +10,9 @@
 // `aria-selected` attribute a legitimate a11y hook rather than a hint that
 // screen readers ignore. The stable DOM id `todo-row-<id>` lets App.vue move
 // focus and scroll after roving-tabindex keyboard navigation.
+import { computed } from 'vue'
 import { useLocale } from '@renderer/composables/useLocale'
-import { isTaskDone, type Task } from '@renderer/domain/taskModel'
+import { getTaskDueState, isTaskDone, type Task } from '@renderer/domain/taskModel'
 
 interface Props {
   todo: Task
@@ -19,7 +20,7 @@ interface Props {
   tabIndex: 0 | -1
 }
 
-defineProps<Props>()
+const props = defineProps<Props>()
 
 const emit = defineEmits<{
   (event: 'toggle', id: string): void
@@ -29,6 +30,22 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useLocale()
+const dueState = computed(() => getTaskDueState(props.todo))
+const dueLabel = computed(() => {
+  if (!props.todo.dueAt) {
+    return ''
+  }
+
+  if (dueState.value === 'overdue') {
+    return t('todo.overdue', { date: props.todo.dueAt })
+  }
+
+  if (dueState.value === 'today') {
+    return t('todo.dueToday')
+  }
+
+  return t('todo.dueDate', { date: props.todo.dueAt })
+})
 </script>
 
 <template>
@@ -51,6 +68,13 @@ const { t } = useLocale()
       />
       <span>{{ todo.title }}</span>
       <span v-if="todo.sensitive" class="sensitive-badge">{{ t('todo.sensitive') }}</span>
+      <span
+        v-if="todo.dueAt"
+        class="due-badge"
+        :class="`is-${dueState}`"
+      >
+        {{ dueLabel }}
+      </span>
     </label>
     <div class="todo-actions">
       <button

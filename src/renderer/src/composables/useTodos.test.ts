@@ -544,6 +544,24 @@ describe('useTodos', () => {
     expect(todos.todos.value[0].updatedAt).toBe('2026-06-16T06:00:00.000Z')
   })
 
+  it('sets, validates, and clears a task due date', async () => {
+    const todos = useTodos()
+    await todos.loaded
+
+    todos.draftTitle.value = 'Deadline task'
+    todos.addTodo()
+    const taskId = todos.todos.value[0].id
+
+    todos.updateTodo(taskId, { dueAt: '2026-08-15' })
+    expect(todos.todos.value[0].dueAt).toBe('2026-08-15')
+
+    todos.updateTodo(taskId, { dueAt: '2026-02-30' })
+    expect(todos.todos.value[0].dueAt).toBeUndefined()
+
+    todos.updateTodo(taskId, { dueAt: null })
+    expect(todos.todos.value[0].dueAt).toBeUndefined()
+  })
+
   it('returns false when updating a missing task', async () => {
     const todos = useTodos()
     await todos.loaded
@@ -876,6 +894,28 @@ describe('useTodos', () => {
 
     expect(todos.sortState.value).toEqual({ key: 'updatedAt', direction: 'desc' })
     expect(todos.filterState.value.keyword).toBe('keep me')
+  })
+
+  it('applies the overdue quick view and excludes completed late tasks', async () => {
+    vi.setSystemTime(new Date(2026, 6, 31, 12, 0, 0))
+    const todos = useTodos()
+    await todos.loaded
+
+    todos.draftTitle.value = 'Late active task'
+    todos.addTodo()
+    todos.updateTodo(todos.todos.value[0].id, { dueAt: '2026-07-30' })
+    todos.draftTitle.value = 'Late completed task'
+    todos.addTodo()
+    todos.updateTodo(todos.todos.value[0].id, { dueAt: '2026-07-01', status: 'done' })
+    todos.draftTitle.value = 'Due later'
+    todos.addTodo()
+    todos.updateTodo(todos.todos.value[0].id, { dueAt: '2026-08-01' })
+
+    todos.applyQuickView('overdue')
+
+    expect(todos.filterState.value.due).toBe('overdue')
+    expect(todos.activeTodos.value.map((todo) => todo.title)).toEqual(['Late active task'])
+    expect(todos.completedTodos.value).toHaveLength(0)
   })
 
   it('exposes sort state through hasActiveView for the clear entry', async () => {

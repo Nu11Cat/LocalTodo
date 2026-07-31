@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   createEmptyTaskFilterState,
   filterTasks,
@@ -37,6 +37,9 @@ function filter(overrides: Partial<TaskFilterState>): TaskFilterState {
 }
 
 describe('taskFilter', () => {
+  afterEach(() => {
+    vi.useRealTimers()
+  })
   it('treats empty filters as inactive and returns the input array', () => {
     const tasks = [baseTask]
     const state = createEmptyTaskFilterState()
@@ -117,5 +120,17 @@ describe('taskFilter', () => {
         filter({ keyword: 'search', statuses: ['todo'], priorities: ['medium'], tags: ['frontend'] })
       )
     ).toEqual([baseTask])
+  })
+
+  it('filters overdue active tasks using the local calendar date', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date(2026, 6, 31, 12, 0, 0))
+    const overdueTask = { ...baseTask, dueAt: '2026-07-30' }
+    const dueTodayTask = { ...baseTask, id: 'today', dueAt: '2026-07-31' }
+    const completedLateTask = { ...baseTask, id: 'done', status: 'done' as const, dueAt: '2026-07-01' }
+
+    expect(filterTasks([overdueTask, dueTodayTask, completedLateTask], filter({ due: 'overdue' }))).toEqual([
+      overdueTask
+    ])
   })
 })

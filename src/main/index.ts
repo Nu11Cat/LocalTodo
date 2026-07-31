@@ -2,6 +2,7 @@ import { basename, dirname, isAbsolute, join, normalize } from 'node:path'
 import { mkdir, readFile, readdir, rename, stat, unlink, writeFile } from 'node:fs/promises'
 import { app, BrowserWindow, dialog, ipcMain, shell, type WebContents } from 'electron'
 import { is } from '@electron-toolkit/utils'
+import { isSafeExternalUrl } from './externalUrl'
 
 type ExportProjectAiContextPayload = {
   markdown?: unknown
@@ -797,7 +798,12 @@ function createWindow(): void {
   })
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    shell.openExternal(url)
+    if (isSafeExternalUrl(url)) {
+      void shell.openExternal(url).catch((error) => {
+        console.error('Failed to open external URL:', error)
+      })
+    }
+
     return { action: 'deny' }
   })
 

@@ -143,6 +143,22 @@ describe('parseSavedViews', () => {
     expect(parsed[0].filter.types).toEqual(['feature'])
   })
 
+  it('keeps portable custom status and type filters', () => {
+    const parsed = parseSavedViews([
+      {
+        id: 'a',
+        name: 'Release flow',
+        filter: {
+          statuses: ['custom-active:QA'],
+          types: ['custom:Ops']
+        }
+      }
+    ])
+
+    expect(parsed[0].filter.statuses).toEqual(['custom-active:QA'])
+    expect(parsed[0].filter.types).toEqual(['custom:Ops'])
+  })
+
   it('synthesizes an id when one is missing', () => {
     const parsed = parseSavedViews([{ name: 'Alpha' }])
 

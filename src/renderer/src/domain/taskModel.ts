@@ -1,8 +1,22 @@
-export type TaskStatus = 'inbox' | 'todo' | 'doing' | 'blocked' | 'review' | 'done'
+export type BuiltinTaskStatus = 'inbox' | 'todo' | 'doing' | 'blocked' | 'review' | 'done'
+
+export type TaskStatus =
+  | BuiltinTaskStatus
+  | `custom-active:${string}`
+  | `custom-done:${string}`
 
 export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent'
 
-export type TaskType = 'feature' | 'bug' | 'refactor' | 'research' | 'chore' | 'deploy' | 'review'
+export type BuiltinTaskType =
+  | 'feature'
+  | 'bug'
+  | 'refactor'
+  | 'research'
+  | 'chore'
+  | 'deploy'
+  | 'review'
+
+export type TaskType = BuiltinTaskType | `custom:${string}`
 
 export interface TaskNote {
   id: string
@@ -31,11 +45,11 @@ export interface Task {
   sensitive: boolean
 }
 
-export const taskStatuses: TaskStatus[] = ['inbox', 'todo', 'doing', 'blocked', 'review', 'done']
+export const taskStatuses: BuiltinTaskStatus[] = ['inbox', 'todo', 'doing', 'blocked', 'review', 'done']
 
 export const taskPriorities: TaskPriority[] = ['low', 'medium', 'high', 'urgent']
 
-export const taskTypes: TaskType[] = [
+export const taskTypes: BuiltinTaskType[] = [
   'feature',
   'bug',
   'refactor',
@@ -76,9 +90,9 @@ export function createTask(input: CreateTaskInput): Task {
   const task: Task = {
     id: input.id ?? createTaskId(),
     title: input.title,
-    status: input.status ?? 'todo',
+    status: isTaskStatus(input.status) ? input.status : 'todo',
     priority: input.priority ?? 'medium',
-    type: input.type ?? 'chore',
+    type: isTaskType(input.type) ? input.type : 'chore',
     tags: sanitizeTaskStringList(input.tags),
     description: input.description ?? '',
     relatedFiles: sanitizeTaskStringList(input.relatedFiles),
@@ -207,7 +221,10 @@ export function sanitizeTaskStringList(value: unknown): string[] {
 }
 
 export function isTaskStatus(value: unknown): value is TaskStatus {
-  return typeof value === 'string' && taskStatuses.includes(value as TaskStatus)
+  return (
+    typeof value === 'string' &&
+    (taskStatuses.includes(value as BuiltinTaskStatus) || parseCustomTaskStatus(value) !== null)
+  )
 }
 
 export function isTaskPriority(value: unknown): value is TaskPriority {
@@ -215,11 +232,14 @@ export function isTaskPriority(value: unknown): value is TaskPriority {
 }
 
 export function isTaskType(value: unknown): value is TaskType {
-  return typeof value === 'string' && taskTypes.includes(value as TaskType)
+  return (
+    typeof value === 'string' &&
+    (taskTypes.includes(value as BuiltinTaskType) || parseCustomTaskType(value) !== null)
+  )
 }
 
 export function isTaskDone(task: Task): boolean {
-  return task.status === 'done'
+  return task.status === 'done' || task.status.startsWith('custom-done:')
 }
 
 export function isTaskActive(task: Task): boolean {
@@ -232,4 +252,93 @@ export function toggleTaskDone(task: Task): Task {
     status: isTaskDone(task) ? 'todo' : 'done',
     updatedAt: new Date().toISOString()
   }
+}
+
+const customTaskLabelMaxLength = 60
+
+function sanitizeCustomTaskLabel(value: unknown): string | null {
+  if (typeof value !== 'string') {
+    return null
+  }
+
+  const label = value.trim().replace(/\s+/g, ' ').slice(0, customTaskLabelMaxLength)
+
+  if (!label || /[\u0000-\u001f\u007f]/.test(label)) {
+    return null
+  }
+
+  return label
+}
+
+export function createCustomTaskStatus(label: string, completed = false): TaskStatus | null {
+  const sanitizedLabel = sanitizeCustomTaskLabel(label)
+
+  if (!sanitizedLabel) {
+    return null
+  }
+
+  return `${completed ? 'custom-done' : 'custom-active'}:${sanitizedLabel}`
+}
+
+export function parseCustomTaskStatus(
+  value: string
+): { label: string; completed: boolean } | null {
+  const match = /^(custom-active|custom-done):(.*)$/.exec(value)
+
+  if (!match) {
+    return null
+  }
+
+  const label = sanitizeCustomTaskLabel(match[2])
+
+  if (!label || label !== match[2]) {
+    return null
+  }
+
+  return { label, completed: match[1] === 'custom-done' }
+}
+
+export function createCustomTaskType(label: string): TaskType | null {
+  const sanitizedLabel = sanitizeCustomTaskLabel(label)
+
+  return sanitizedLabel ? `custom:${sanitizedLabel}` : null
+}
+
+export function parseCustomTaskType(value: string): { label: string } | null {
+  if (!value.startsWith('custom:')) {
+    return null
+  }
+
+  const rawLabel = value.slice('custom:'.length)
+  const label = sanitizeCustomTaskLabel(rawLabel)
+
+  return label && label === rawLabel ? { label } : null
+}
+
+export function collectTaskStatuses(tasks: Task[]): TaskStatus[] {
+  const statuses: TaskStatus[] = [...taskStatuses]
+  const seen = new Set<TaskStatus>(statuses)
+
+  for (const task of tasks) {
+    if (!seen.has(task.status)) {
+      seen.add(task.status)
+      statuses.push(task.status)
+    }
+  }
+
+  return statuses
+}
+
+export function collectTaskTypes(tasks: Task[]): TaskType[] {
+  const types: TaskType[] = [...taskTypes]
+  const seen = new Set<TaskType>(types)
+
+  for (const task of tasks) {
+    if (!seen.has(task.type)) {
+      seen.add(task.type)
+      types.push(task.type)
+    }
+  }
+
+  return types
 }

@@ -10,8 +10,11 @@ import { computed } from 'vue'
 import { useLocale } from '@renderer/composables/useLocale'
 import type { MessageKey } from '@renderer/locales/en'
 import type { ProjectSummary } from '@renderer/domain/projectSummary'
-import type { TaskStatus } from '@renderer/domain/taskModel'
-import { taskStatuses } from '@renderer/domain/taskModel'
+import {
+  parseCustomTaskStatus,
+  type BuiltinTaskStatus,
+  type TaskStatus
+} from '@renderer/domain/taskModel'
 
 // Kept in sync with `QuickViewId` in useTodos.ts. Enumerated here so the glyph
 // map below is a total mapping — a new quick-view id would fail typecheck.
@@ -34,9 +37,10 @@ interface Props {
   projectSummaries: readonly ProjectSummary[]
   selectedProjectKey: string | null
   activeStatuses: readonly TaskStatus[]
+  statuses: readonly TaskStatus[]
   // Total task count per status across the whole workspace. Derived in App.vue
   // so the sidebar renders a real number next to each status entry.
-  statusCounts: Record<TaskStatus, number>
+  statusCounts: Partial<Record<TaskStatus, number>>
 }
 
 const props = defineProps<Props>()
@@ -55,7 +59,7 @@ const { t } = useLocale()
 
 // One-char glyph shown in collapsed mode. Keep short so it fits in the 56px
 // rail. Total maps — TS enforces that new ids in the union add an entry here.
-const statusInitials: Record<TaskStatus, string> = {
+const statusInitials: Record<BuiltinTaskStatus, string> = {
   inbox: 'I',
   todo: 'T',
   doing: 'D',
@@ -79,7 +83,13 @@ const visibleQuickViews = computed(() =>
 )
 
 function statusLabel(status: TaskStatus): string {
-  return t(`status.${status}` as MessageKey)
+  return parseCustomTaskStatus(status)?.label ?? t(`status.${status}` as MessageKey)
+}
+
+function statusInitial(status: TaskStatus): string {
+  const customLabel = parseCustomTaskStatus(status)?.label
+
+  return customLabel ? customLabel.charAt(0).toUpperCase() : statusInitials[status as BuiltinTaskStatus]
 }
 
 // summary.label is the raw English fallback for the unassigned bucket. Only
@@ -176,29 +186,29 @@ function isProjectActive(key: string): boolean {
         <h3 v-if="!collapsed" class="app-sidebar-group-title">{{ t('nav.status') }}</h3>
         <ul class="app-sidebar-list">
           <li
-            v-for="status in taskStatuses"
+            v-for="status in statuses"
             :key="status"
             class="app-sidebar-item"
           >
             <button
               type="button"
               class="app-sidebar-item-btn"
-              :class="[`is-status-${status}`, { 'is-active': isStatusActive(status) }]"
+              :class="[{ 'is-active': isStatusActive(status) }, { [`is-status-${status}`]: !status.startsWith('custom-') }]"
               :aria-pressed="isStatusActive(status)"
               :title="statusLabel(status)"
               @click="emit('toggle-status', status)"
             >
               <span class="app-sidebar-item-glyph" aria-hidden="true">
-                {{ statusInitials[status] }}
+                {{ statusInitial(status) }}
               </span>
               <span v-if="!collapsed" class="app-sidebar-item-label">
                 {{ statusLabel(status) }}
               </span>
               <span
-                v-if="!collapsed && statusCounts[status] > 0"
+                v-if="!collapsed && (statusCounts[status] ?? 0) > 0"
                 class="app-sidebar-item-count"
               >
-                {{ statusCounts[status] }}
+                {{ statusCounts[status] ?? 0 }}
               </span>
             </button>
           </li>

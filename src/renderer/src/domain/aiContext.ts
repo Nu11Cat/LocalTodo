@@ -1,4 +1,10 @@
-import { isTaskActive, isTaskDone, type Task } from './taskModel'
+import {
+  isTaskActive,
+  isTaskDone,
+  parseCustomTaskStatus,
+  parseCustomTaskType,
+  type Task
+} from './taskModel'
 
 interface ProjectTaskGroup {
   projectName?: string
@@ -64,12 +70,14 @@ export function filterSensitiveTasks(
 }
 
 function formatTaskSummary(task: Task): string {
+  const status = parseCustomTaskStatus(task.status)?.label ?? task.status
+  const taskType = parseCustomTaskType(task.type)?.label ?? task.type
   const lines = [
     `## ${task.title}`,
     '',
-    `- Status: ${task.status}`,
+    `- Status: ${status}`,
     `- Priority: ${task.priority}`,
-    `- Type: ${task.type}`
+    `- Type: ${taskType}`
   ]
 
   if (task.projectName) {
@@ -144,7 +152,13 @@ function formatProjectGroup(group: ProjectTaskGroup): string[] {
   const doingTasks = group.tasks.filter((task) => task.status === 'doing')
   const blockedTasks = group.tasks.filter((task) => task.status === 'blocked')
   const reviewTasks = group.tasks.filter((task) => task.status === 'review')
-  const todoTasks = group.tasks.filter((task) => task.status === 'todo' || task.status === 'inbox')
+  const todoTasks = group.tasks.filter(
+    (task) =>
+      isTaskActive(task) &&
+      task.status !== 'doing' &&
+      task.status !== 'blocked' &&
+      task.status !== 'review'
+  )
   const doneTasks = group.tasks.filter(isTaskDone)
   const files = dedupeItems(group.tasks.flatMap((task) => task.relatedFiles))
   const commands = dedupeItems(group.tasks.flatMap((task) => task.commands))
@@ -176,6 +190,8 @@ function formatProjectGroup(group: ProjectTaskGroup): string[] {
 }
 
 export function generateTaskAiContext(task: Task): string {
+  const status = parseCustomTaskStatus(task.status)?.label ?? task.status
+  const taskType = parseCustomTaskType(task.type)?.label ?? task.type
   const sections = [
     '# Task Context',
     '',
@@ -185,7 +201,7 @@ export function generateTaskAiContext(task: Task): string {
     '',
     '## Status',
     '',
-    task.status,
+    status,
     '',
     '## Priority',
     '',
@@ -193,7 +209,7 @@ export function generateTaskAiContext(task: Task): string {
     '',
     '## Type',
     '',
-    task.type,
+    taskType,
     '',
     '## Tags',
     '',

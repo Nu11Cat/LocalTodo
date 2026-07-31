@@ -27,6 +27,8 @@ import {
   type SavedView
 } from '@renderer/domain/savedView'
 import {
+  collectTaskStatuses,
+  collectTaskTypes,
   createTask,
   createTaskNote,
   isTaskActive,
@@ -490,6 +492,8 @@ export function useTodos() {
 
     return [...tagsByKey.values()].sort((first, second) => first.localeCompare(second))
   })
+  const availableStatuses = computed(() => collectTaskStatuses(todos.value))
+  const availableTypes = computed(() => collectTaskTypes(todos.value))
   const selectedTodo = computed(() => {
     if (selectedTodoId.value === null) {
       return null
@@ -1144,6 +1148,8 @@ export function useTodos() {
     selectedProjectKey,
     selectedProjectLabel,
     availableTags,
+    availableStatuses,
+    availableTypes,
     selectedTodo,
     loaded,
     addTodo,

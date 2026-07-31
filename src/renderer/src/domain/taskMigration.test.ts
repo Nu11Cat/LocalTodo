@@ -113,4 +113,21 @@ describe('taskMigration', () => {
       }
     ])
   })
+
+  it('preserves valid custom statuses and types', () => {
+    const tasks = migrateStoredTasks([
+      {
+        id: 'custom-1',
+        title: 'Ship from QA',
+        status: 'custom-done:Released',
+        type: 'custom:Ops',
+        createdAt: '2026-06-16T01:00:00.000Z'
+      }
+    ])
+
+    expect(tasks[0]).toMatchObject({
+      status: 'custom-done:Released',
+      type: 'custom:Ops'
+    })
+  })
 })

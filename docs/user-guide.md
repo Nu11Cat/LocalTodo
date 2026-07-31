@@ -70,9 +70,9 @@ npm run build
 
 在任务列表中点击 **Edit**，可以编辑任务的详细信息，包括：
 
-- 状态：例如 active、done。
+- 状态：内置 Inbox、Todo、Doing、Blocked、Review、Done，也可以输入自定义状态。创建自定义状态时可标记为“完成状态”，决定任务进入 Active 还是 Completed 区域。
 - 优先级：用于区分任务紧急程度。
-- 类型：例如 feature、bug、chore 等。
+- 类型：内置 feature、bug、refactor、research、chore、deploy、review，也可以输入并应用自定义类型。
 - 标签：用于按主题或模块分类。
 - 描述：记录任务背景、验收标准或补充说明。
 - 进展记录（Activity log）：可追加带时间戳的进展条目，记录“做了什么”“为什么卡住”“下一步动作”。每条追加后不可编辑、可单条删除，适合把任务当作轻量开发日志使用。
@@ -102,6 +102,7 @@ npm run build
 
 - 未完成任务显示在 **Active** 区域。
 - 已完成任务显示在 **Completed** 区域。
+- 自定义状态和类型会随任务保存在 JSON 中；同一自定义值在其他任务的下拉框和筛选栏中可复用。
 
 ### 删除任务
 

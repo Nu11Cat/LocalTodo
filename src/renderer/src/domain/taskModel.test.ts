@@ -1,9 +1,17 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
+  collectTaskStatuses,
+  collectTaskTypes,
+  createCustomTaskStatus,
+  createCustomTaskType,
   createTask,
   createTaskNote,
   isTaskActive,
   isTaskDone,
+  isTaskStatus,
+  isTaskType,
+  parseCustomTaskStatus,
+  parseCustomTaskType,
   sanitizeTaskNotes,
   toggleTaskDone
 } from './taskModel'
@@ -142,5 +150,60 @@ describe('taskModel', () => {
     expect(activeTask.status).toBe('todo')
 
     vi.useRealTimers()
+  })
+
+  it('creates portable custom statuses with completion semantics', () => {
+    const activeStatus = createCustomTaskStatus('  QA in progress  ')
+    const completedStatus = createCustomTaskStatus('Released', true)
+
+    expect(activeStatus).toBe('custom-active:QA in progress')
+    expect(completedStatus).toBe('custom-done:Released')
+    expect(parseCustomTaskStatus(activeStatus!)).toEqual({
+      label: 'QA in progress',
+      completed: false
+    })
+    expect(isTaskStatus(activeStatus)).toBe(true)
+    expect(isTaskDone(createTask({ title: 'Released task', status: completedStatus! }))).toBe(true)
+  })
+
+  it('creates portable custom types and rejects malformed custom values', () => {
+    const taskType = createCustomTaskType('  Prompt design  ')
+
+    expect(taskType).toBe('custom:Prompt design')
+    expect(parseCustomTaskType(taskType!)).toEqual({ label: 'Prompt design' })
+    expect(isTaskType(taskType)).toBe(true)
+    expect(isTaskStatus('custom-active:')).toBe(false)
+    expect(isTaskType('custom:   ')).toBe(false)
+  })
+
+  it('collects custom status and type values used by tasks', () => {
+    const tasks = [
+      createTask({ title: 'Built in' }),
+      createTask({
+        title: 'Custom',
+        status: 'custom-active:QA',
+        type: 'custom:Ops'
+      })
+    ]
+
+    expect(collectTaskStatuses(tasks)).toEqual([
+      'inbox',
+      'todo',
+      'doing',
+      'blocked',
+      'review',
+      'done',
+      'custom-active:QA'
+    ])
+    expect(collectTaskTypes(tasks)).toEqual([
+      'feature',
+      'bug',
+      'refactor',
+      'research',
+      'chore',
+      'deploy',
+      'review',
+      'custom:Ops'
+    ])
   })
 })

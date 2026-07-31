@@ -1,9 +1,15 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import {
+  createCustomTaskStatus,
+  createCustomTaskType,
+  parseCustomTaskStatus,
+  parseCustomTaskType,
   taskPriorities,
   taskStatuses,
   taskTypes,
+  type BuiltinTaskStatus,
+  type BuiltinTaskType,
   type Task,
   type TaskPriority,
   type TaskStatus,
@@ -16,7 +22,7 @@ import { useLocale } from '@renderer/composables/useLocale'
 const { t } = useLocale()
 
 function statusLabel(status: TaskStatus): string {
-  return t(`status.${status}` as const)
+  return parseCustomTaskStatus(status)?.label ?? t(`status.${status as BuiltinTaskStatus}` as const)
 }
 
 function priorityLabel(priority: TaskPriority): string {
@@ -24,7 +30,7 @@ function priorityLabel(priority: TaskPriority): string {
 }
 
 function typeLabel(taskType: TaskType): string {
-  return t(`type.${taskType}` as const)
+  return parseCustomTaskType(taskType)?.label ?? t(`type.${taskType as BuiltinTaskType}` as const)
 }
 
 type TaskPatch = Partial<{
@@ -47,9 +53,13 @@ const props = withDefaults(
   defineProps<{
     task: Task | null
     allTasks?: Task[]
+    availableStatuses?: TaskStatus[]
+    availableTypes?: TaskType[]
   }>(),
   {
-    allTasks: () => []
+    allTasks: () => [],
+    availableStatuses: () => [...taskStatuses],
+    availableTypes: () => [...taskTypes]
   }
 )
 
@@ -72,6 +82,9 @@ const relatedFileDraft = ref('')
 const commandDraft = ref('')
 const descriptionDraft = ref('')
 const noteDraft = ref('')
+const customStatusDraft = ref('')
+const customStatusCompleted = ref(false)
+const customTypeDraft = ref('')
 
 watch(
   () => props.task,
@@ -86,6 +99,9 @@ watch(
     commandDraft.value = ''
     descriptionDraft.value = task?.description ?? ''
     noteDraft.value = ''
+    customStatusDraft.value = ''
+    customStatusCompleted.value = false
+    customTypeDraft.value = ''
   },
   { immediate: true }
 )
@@ -104,6 +120,29 @@ function updateType(event: Event): void {
 
 function updateSensitive(event: Event): void {
   emit('update', { sensitive: (event.target as HTMLInputElement).checked })
+}
+
+function applyCustomStatus(): void {
+  const status = createCustomTaskStatus(customStatusDraft.value, customStatusCompleted.value)
+
+  if (!status) {
+    return
+  }
+
+  emit('update', { status })
+  customStatusDraft.value = ''
+  customStatusCompleted.value = false
+}
+
+function applyCustomType(): void {
+  const taskType = createCustomTaskType(customTypeDraft.value)
+
+  if (!taskType) {
+    return
+  }
+
+  emit('update', { type: taskType })
+  customTypeDraft.value = ''
 }
 
 function saveProjectName(): void {
@@ -422,7 +461,7 @@ function formatNoteTimestamp(value: string): string {
         <label>
           <span>{{ t('detail.status') }}</span>
           <select :value="task.status" @change="updateStatus">
-            <option v-for="status in taskStatuses" :key="status" :value="status">{{ statusLabel(status) }}</option>
+            <option v-for="status in availableStatuses" :key="status" :value="status">{{ statusLabel(status) }}</option>
           </select>
         </label>
 
@@ -438,10 +477,51 @@ function formatNoteTimestamp(value: string): string {
         <label>
           <span>{{ t('detail.type') }}</span>
           <select :value="task.type" @change="updateType">
-            <option v-for="taskType in taskTypes" :key="taskType" :value="taskType">{{ typeLabel(taskType) }}</option>
+            <option v-for="taskType in availableTypes" :key="taskType" :value="taskType">{{ typeLabel(taskType) }}</option>
           </select>
         </label>
       </div>
+
+      <details class="custom-option-panel detail-field">
+        <summary>{{ t('detail.customizeWorkflow') }}</summary>
+        <div class="custom-option-grid">
+          <form class="custom-option-editor" @submit.prevent="applyCustomStatus">
+            <label for="custom-task-status">{{ t('detail.customStatus') }}</label>
+            <div class="custom-option-controls">
+              <input
+                id="custom-task-status"
+                v-model="customStatusDraft"
+                type="text"
+                maxlength="60"
+                :placeholder="t('detail.customStatusPlaceholder')"
+              />
+              <label class="compact-checkbox">
+                <input v-model="customStatusCompleted" type="checkbox" />
+                <span>{{ t('detail.completedStatus') }}</span>
+              </label>
+              <button type="submit" class="ghost-button" :disabled="!customStatusDraft.trim()">
+                {{ t('detail.applyCustom') }}
+              </button>
+            </div>
+          </form>
+
+          <form class="custom-option-editor" @submit.prevent="applyCustomType">
+            <label for="custom-task-type">{{ t('detail.customType') }}</label>
+            <div class="custom-option-controls">
+              <input
+                id="custom-task-type"
+                v-model="customTypeDraft"
+                type="text"
+                maxlength="60"
+                :placeholder="t('detail.customTypePlaceholder')"
+              />
+              <button type="submit" class="ghost-button" :disabled="!customTypeDraft.trim()">
+                {{ t('detail.applyCustom') }}
+              </button>
+            </div>
+          </form>
+        </div>
+      </details>
 
       <div class="detail-field">
         <label class="checkbox-label">

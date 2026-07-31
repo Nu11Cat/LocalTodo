@@ -289,4 +289,29 @@ Generate copyable Markdown for AI assistants.
     expect(context.markdown).toContain('## Sensitive project task')
     expect(context.markdown).not.toContain('Excluded sensitive tasks')
   })
+
+  it('renders custom labels and groups custom completion semantics', () => {
+    const activeTask = {
+      ...baseTask,
+      id: 'custom-active',
+      title: 'Validate release',
+      status: 'custom-active:QA' as const,
+      type: 'custom:Ops' as const
+    }
+    const completedTask = {
+      ...baseTask,
+      id: 'custom-done',
+      title: 'Release shipped',
+      status: 'custom-done:Released' as const
+    }
+    const context = generateProjectAiContext([activeTask, completedTask])
+
+    expect(generateTaskAiContext(activeTask)).toContain('## Status\n\nQA')
+    expect(generateTaskAiContext(activeTask)).toContain('## Type\n\nOps')
+    expect(context.markdown).toContain('### Todo / Inbox\n\n## Validate release')
+    expect(context.markdown).toContain('### Done\n\n## Release shipped')
+    expect(context.markdown).not.toContain('custom-active:')
+    expect(context.markdown).not.toContain('custom-done:')
+    expect(context.markdown).not.toContain('custom:Ops')
+  })
 })

@@ -506,6 +506,29 @@ describe('useTodos', () => {
     expect(todos.todos.value[0].githubPullRequestUrl).toBeUndefined()
   })
 
+  it('reuses custom statuses and types and honors completed custom statuses', async () => {
+    const todos = useTodos()
+    await todos.loaded
+
+    todos.draftTitle.value = 'Custom workflow task'
+    todos.addTodo()
+    const taskId = todos.todos.value[0].id
+
+    todos.updateTodo(taskId, {
+      status: 'custom-active:QA',
+      type: 'custom:Ops'
+    })
+
+    expect(todos.availableStatuses.value).toContain('custom-active:QA')
+    expect(todos.availableTypes.value).toContain('custom:Ops')
+    expect(todos.activeTodos.value.map((task) => task.id)).toContain(taskId)
+
+    todos.updateTodo(taskId, { status: 'custom-done:Released' })
+
+    expect(todos.activeTodos.value.map((task) => task.id)).not.toContain(taskId)
+    expect(todos.completedTodos.value.map((task) => task.id)).toContain(taskId)
+  })
+
   it('updates timestamps when editing tasks', async () => {
     vi.setSystemTime(new Date('2026-06-16T05:00:00.000Z'))
     const todos = useTodos()

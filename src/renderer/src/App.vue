@@ -12,7 +12,15 @@ import { useLocale } from './composables/useLocale'
 import { useTheme } from './composables/useTheme'
 import { useLayout, navWidthMin, navWidthMax, detailWidthMin, detailWidthMax } from './composables/useLayout'
 import { listboxPageSizeFor } from './composables/useListboxNavigation'
-import { taskPriorities, taskStatuses, taskTypes, type TaskStatus } from './domain/taskModel'
+import {
+  parseCustomTaskStatus,
+  parseCustomTaskType,
+  taskPriorities,
+  type BuiltinTaskStatus,
+  type BuiltinTaskType,
+  type TaskStatus,
+  type TaskType
+} from './domain/taskModel'
 import type { TaskSortKey } from './domain/taskSort'
 import {
   advanceListboxTypeahead,
@@ -87,6 +95,8 @@ const {
   selectedProjectKey,
   selectedProjectLabel,
   availableTags,
+  availableStatuses,
+  availableTypes,
   selectedTodo,
   dataFileInfo,
   addTodo,
@@ -206,18 +216,11 @@ const hasAnyTodos = computed(() => totalActiveCount.value + totalCompletedCount.
 // Per-status task counts drive the badges in the sidebar Status group. Include
 // every status (done too) in a single O(n) pass — the sidebar renders the
 // number only when > 0 so an empty bucket stays visually clean.
-const statusCounts = computed<Record<TaskStatus, number>>(() => {
-  const counts: Record<TaskStatus, number> = {
-    inbox: 0,
-    todo: 0,
-    doing: 0,
-    blocked: 0,
-    review: 0,
-    done: 0
-  }
+const statusCounts = computed<Partial<Record<TaskStatus, number>>>(() => {
+  const counts: Partial<Record<TaskStatus, number>> = {}
 
   for (const task of todos.value) {
-    counts[task.status] += 1
+    counts[task.status] = (counts[task.status] ?? 0) + 1
   }
 
   return counts
@@ -241,16 +244,20 @@ function sortLabel(key: TaskSortKey): string {
   return t(`sort.${key}` as const)
 }
 
-function statusLabel(status: (typeof taskStatuses)[number]): string {
-  return t(`status.${status}` as const)
+function statusLabel(status: TaskStatus): string {
+  const customStatus = parseCustomTaskStatus(status)
+
+  return customStatus?.label ?? t(`status.${status as BuiltinTaskStatus}` as const)
 }
 
 function priorityLabel(priority: (typeof taskPriorities)[number]): string {
   return t(`priority.${priority}` as const)
 }
 
-function typeLabel(taskType: (typeof taskTypes)[number]): string {
-  return t(`type.${taskType}` as const)
+function typeLabel(taskType: TaskType): string {
+  const customType = parseCustomTaskType(taskType)
+
+  return customType?.label ?? t(`type.${taskType as BuiltinTaskType}` as const)
 }
 
 // Count fragments used to fill {count}-style placeholders in messages/confirms.
@@ -760,6 +767,7 @@ async function revealLastAiContextFile(): Promise<void> {
       :project-summaries="projectSummaries"
       :selected-project-key="selectedProjectKey"
       :active-statuses="filterState.statuses"
+      :statuses="availableStatuses"
       :status-counts="statusCounts"
       @toggle-collapsed="toggleNavCollapsed"
       @apply-quick-view="applyQuickView"
@@ -862,7 +870,7 @@ async function revealLastAiContextFile(): Promise<void> {
           <div class="filter-row" :aria-label="t('filter.status')">
             <span>{{ t('filter.status') }}</span>
             <button
-              v-for="status in taskStatuses"
+              v-for="status in availableStatuses"
               :key="status"
               type="button"
               class="filter-chip"
@@ -892,7 +900,7 @@ async function revealLastAiContextFile(): Promise<void> {
           <div class="filter-row" :aria-label="t('filter.type')">
             <span>{{ t('filter.type') }}</span>
             <button
-              v-for="taskType in taskTypes"
+              v-for="taskType in availableTypes"
               :key="taskType"
               type="button"
               class="filter-chip"
@@ -1025,6 +1033,8 @@ async function revealLastAiContextFile(): Promise<void> {
       <TaskDetailPanel
         :task="selectedTodo"
         :all-tasks="todos"
+        :available-statuses="availableStatuses"
+        :available-types="availableTypes"
         @update="updateSelectedTodo"
         @add-note="addNoteToSelectedTodo"
         @remove-note="removeNoteFromSelectedTodo"

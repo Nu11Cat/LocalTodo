@@ -1079,6 +1079,51 @@ h2 {
   margin-top: 16px;
 }
 
+.custom-option-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.custom-option-panel > summary {
+  color: var(--text-label);
+  font-size: var(--fs-label);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.custom-option-editor {
+  min-width: 0;
+}
+
+.custom-option-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.custom-option-controls > input[type='text'] {
+  min-width: 0;
+  flex: 1;
+}
+
+.compact-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+  color: var(--text-subtle);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+
+.custom-option-controls .compact-checkbox input {
+  width: auto;
+  margin: 0;
+}
+
 .detail-field input,
 .detail-field textarea {
   width: 100%;
@@ -1382,5 +1427,9 @@ h2 {
   .field-grid {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .custom-option-grid {
+    grid-template-columns: 1fr;
   }
 }

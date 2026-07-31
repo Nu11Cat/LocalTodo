@@ -11,7 +11,7 @@
 // screen readers ignore. The stable DOM id `todo-row-<id>` lets App.vue move
 // focus and scroll after roving-tabindex keyboard navigation.
 import { useLocale } from '@renderer/composables/useLocale'
-import type { Task } from '@renderer/domain/taskModel'
+import { isTaskDone, type Task } from '@renderer/domain/taskModel'
 
 interface Props {
   todo: Task
@@ -45,7 +45,7 @@ const { t } = useLocale()
     <label>
       <input
         type="checkbox"
-        :checked="todo.status === 'done'"
+        :checked="isTaskDone(todo)"
         :tabindex="selected ? 0 : -1"
         @change="emit('toggle', todo.id)"
       />
